@@ -278,7 +278,7 @@ function needsOrder(key) {
   return qty === 0 || (rp > 0 && qty <= rp);
 }
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbxep9J_ZkEsQCGKos1ZN9bONMMMdF5M5SlgSC-idd35VXzopqQPk0S2N3n7XsWXWsH8/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxU6p5dr4XS44-YR7ErXi4FnEbpMTk0l5w-yivpz07-e4TkVVMdlNawt_IpgW2bq-cQ/exec';
 let saveTimer = null;
 
 function save() {
@@ -296,8 +296,10 @@ function save() {
 
 function syncToCloud() {
   const data = JSON.stringify({ inventory, reorderPts, orderQtys, orderNotes });
+  // Usar no-cors para evitar problemas de CORS en el POST
   fetch(API_URL, {
     method: 'POST',
+    mode: 'no-cors',
     body: data,
     headers: { 'Content-Type': 'text/plain' }
   }).catch(() => {});
@@ -311,27 +313,28 @@ function load() {
     const q = localStorage.getItem('smashit_oqtys');  if (q) orderQtys  = JSON.parse(q);
     const n = localStorage.getItem('smashit_onotes'); if (n) orderNotes = JSON.parse(n);
   } catch(e) {}
-  // Luego sincronizar desde la nube
-  fetch(API_URL)
-    .then(r => r.json())
-    .then(d => {
-      if (d && d.inventory) {
-        inventory  = d.inventory;
-        reorderPts = d.reorderPts || {};
-        orderQtys  = d.orderQtys  || {};
-        orderNotes = d.orderNotes || {};
-        // Guardar local actualizado
-        try {
-          localStorage.setItem('smashit_inv',    JSON.stringify(inventory));
-          localStorage.setItem('smashit_ro',     JSON.stringify(reorderPts));
-          localStorage.setItem('smashit_oqtys',  JSON.stringify(orderQtys));
-          localStorage.setItem('smashit_onotes', JSON.stringify(orderNotes));
-        } catch(e) {}
-        renderInv();
-        showToast('Datos sincronizados ✓');
-      }
-    })
-    .catch(() => {});
+  // Sincronizar desde la nube via JSONP para evitar CORS
+  const script = document.createElement('script');
+  window.__smashitCallback = function(d) {
+    if (d && d.inventory) {
+      inventory  = d.inventory;
+      reorderPts = d.reorderPts || {};
+      orderQtys  = d.orderQtys  || {};
+      orderNotes = d.orderNotes || {};
+      try {
+        localStorage.setItem('smashit_inv',    JSON.stringify(inventory));
+        localStorage.setItem('smashit_ro',     JSON.stringify(reorderPts));
+        localStorage.setItem('smashit_oqtys',  JSON.stringify(orderQtys));
+        localStorage.setItem('smashit_onotes', JSON.stringify(orderNotes));
+      } catch(e) {}
+      renderInv();
+      showToast('Datos sincronizados ✓');
+    }
+    document.head.removeChild(script);
+  };
+  script.src = API_URL + '?callback=__smashitCallback';
+  script.onerror = () => { try { document.head.removeChild(script); } catch(e) {} };
+  document.head.appendChild(script);
 }
 
 function showPage(id, btn) {
