@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smash It — Inventario</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#f4f3ef; --bg2:#ffffff; --bg3:#edecea; --bg4:#e4e3e0;
+      --text:#1a1a18; --text2:#6b6b67; --text3:#9c9b97;
+      --border:rgba(0,0,0,0.11); --border2:rgba(0,0,0,0.20);
+      --radius:8px; --accent:#E8432D; --green:#2D8C57; --amber:#D97A0F; --blue:#185FA5;
+    }
+    @media (prefers-color-scheme:dark) {
+      :root {
+        --bg:#1a1a18; --bg2:#242422; --bg3:#2e2e2b; --bg4:#383835;
+        --text:#e8e7e1; --text2:#9c9b97; --text3:#6b6b67;
+        --border:rgba(255,255,255,0.09); --border2:rgba(255,255,255,0.17);
+      }
+    }
+    @media print {
+      body > *:not(#__print_frame) { display:none !important; }
+      #__print_frame { display:block !important; }
+      * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+      @page { margin:10mm 8mm; size:A4; }
+    }
+    #__print_frame { display:none; }
+
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:0 0 80px; }
+
+    .topbar { position:sticky; top:0; z-index:50; background:var(--bg2); border-bottom:0.5px solid var(--border2); padding:0 16px; display:flex; align-items:center; }
+    .logo { background:var(--accent); color:#fff; font-weight:700; font-size:13px; padding:5px 12px; border-radius:var(--radius); letter-spacing:.6px; margin-right:16px; flex-shrink:0; }
+    .nav-tabs { display:flex; flex:1; overflow-x:auto; }
+    .nav-tab { padding:13px 14px; font-size:13px; font-weight:500; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; user-select:none; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; transition:color .15s; }
+    .nav-tab:hover { color:var(--text); }
+    .nav-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .topbar-date { font-size:11px; color:var(--text3); margin-left:auto; flex-shrink:0; padding-left:12px; }
+
+    .page { display:none; padding:18px 16px 0; max-width:1100px; margin:0 auto; }
+    .page.active { display:block; }
+
+    .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:8px; margin-bottom:16px; }
+    .stat { background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--radius); padding:10px 12px; }
+    .stat-label { font-size:11px; color:var(--text2); margin-bottom:3px; }
+    .stat-val { font-size:22px; font-weight:500; }
+    .c-green{color:var(--green);} .c-red{color:var(--accent);} .c-amber{color:var(--amber);} .c-blue{color:var(--blue);}
+
+    .controls { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+    .search-wrap { position:relative; flex:1; min-width:160px; }
+    .search-icon { position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; }
+    .search-inp { width:100%; font-size:13px; padding:7px 10px 7px 30px; border-radius:var(--radius); border:0.5px solid var(--border2); background:var(--bg2); color:var(--text); outline:none; font-family:inherit; }
+    .search-inp:focus { border-color:var(--accent); }
+    .filter-btn { font-size:12px; padding:6px 11px; border:0.5px solid var(--border2); border-radius:var(--radius); background:var(--bg2); color:var(--text2); cursor:pointer; transition:all .15s; white-space:nowrap; font-family:inherit; }
+    .filter-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .filter-btn:hover:not(.active) { background:var(--bg3); }
+
+    .legend { display:flex; gap:12px; margin-bottom:18px; font-size:12px; color:var(--text2); flex-wrap:wrap; }
+    .legend-item { display:flex; align-items:center; gap:5px; }
+    .ldot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+    .supplier-section { margin-bottom:24px; }
+    .supplier-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; padding-bottom:7px; border-bottom:0.5px solid var(--border); cursor:pointer; user-select:none; }
+    .supplier-header:hover .supplier-name { color:var(--accent); }
+    .supplier-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .supplier-name { font-size:15px; font-weight:600; transition:color .15s; }
+    .supplier-count { font-size:12px; color:var(--text3); margin-left:auto; }
+    .supplier-toggle { font-size:11px; color:var(--text3); transition:transform .2s; margin-left:6px; }
+    .supplier-section.collapsed .supplier-toggle { transform:rotate(-90deg); }
+    .supplier-section.collapsed .items-grid { display:none; }
+    .supplier-section.collapsed .reorder-grid { display:none; }
+
+    .items-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:8px; }
+    .item-card { background:var(--bg2); border:0.5px solid var(--border); border-left:3px solid transparent; border-radius:var(--radius); padding:9px 10px; display:flex; align-items:center; gap:8px; transition:box-shadow .15s; }
+    .item-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.07); }
+    .item-card.ok    { border-left-color:var(--green); }
+    .item-card.low   { border-left-color:var(--accent); }
+    .item-card.empty { border-left-color:var(--amber); }
+    .item-card.hidden { display:none !important; }
+    .status-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .dot-ok{background:var(--green);} .dot-low{background:var(--accent);} .dot-empty{background:var(--amber);}
+    .item-info { flex:1; min-width:0; }
+    .item-name { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+    .item-num  { font-size:10px; color:var(--text3); margin-top:1px; }
+    .qty-control { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+    .qty-btn { width:26px; height:26px; border:0.5px solid var(--border2); border-radius:5px; background:var(--bg3); color:var(--text); font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .1s; font-family:inherit; line-height:1; }
+    .qty-btn:hover { background:var(--bg4); }
+    .qty-btn:active { transform:scale(0.92); }
+    .qty-val { font-size:14px; font-weight:600; min-width:26px; text-align:center; color:var(--text); }
+
+    .reorder-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:8px; }
+    .reorder-card { background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--radius); padding:10px 12px; display:flex; align-items:center; gap:10px; }
+    .reorder-card.hidden { display:none !important; }
+    .reorder-info { flex:1; min-width:0; }
+    .reorder-name { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+    .reorder-sub  { font-size:11px; color:var(--text3); margin-top:1px; }
+    .reorder-input { width:54px; padding:5px 6px; font-size:13px; font-weight:600; text-align:center; border:0.5px solid var(--border2); border-radius:6px; background:var(--bg3); color:var(--text); outline:none; font-family:inherit; }
+    .reorder-input:focus { border-color:var(--accent); background:var(--bg2); }
+    .stock-badge { font-size:11px; font-weight:600; padding:2px 7px; border-radius:20px; flex-shrink:0; white-space:nowrap; }
+    .badge-ok    { background:#d4edda; color:#1a5c34; }
+    .badge-low   { background:#fde8e4; color:#8c1c0a; }
+    .badge-empty { background:#fef3dc; color:#7a460a; }
+    @media(prefers-color-scheme:dark){
+      .badge-ok{background:#1a3d28;color:#6fcf97;}
+      .badge-low{background:#3d1a16;color:#f4957d;}
+      .badge-empty{background:#3d2e10;color:#f0b45a;}
+    }
+
+    .orders-intro { background:var(--bg2); border:0.5px solid var(--border); border-radius:var(--radius); padding:12px 14px; margin-bottom:16px; font-size:13px; color:var(--text2); line-height:1.6; }
+    .orders-intro strong { color:var(--text); }
+    .order-supplier-block { margin-bottom:22px; }
+    .order-supplier-hdr { display:flex; align-items:center; gap:10px; padding:9px 14px; border-radius:var(--radius); margin-bottom:8px; }
+    .order-supplier-name { font-size:14px; font-weight:700; color:#fff; }
+    .order-count-badge { font-size:11px; font-weight:600; background:rgba(255,255,255,.25); color:#fff; padding:2px 8px; border-radius:20px; margin-left:auto; }
+    .order-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .order-table th { text-align:left; padding:7px 10px; font-size:11px; font-weight:600; color:var(--text2); border-bottom:0.5px solid var(--border2); text-transform:uppercase; letter-spacing:.4px; }
+    .order-table td { padding:8px 10px; border-bottom:0.5px solid var(--border); vertical-align:middle; }
+    .order-table tr:last-child td { border-bottom:none; }
+    .order-table tr:hover td { background:var(--bg3); }
+    .order-row-name { font-weight:500; color:var(--text); }
+    .order-qty-input { width:60px; padding:4px 6px; font-size:13px; font-weight:600; text-align:center; border:0.5px solid var(--border2); border-radius:5px; background:var(--bg3); color:var(--text); outline:none; font-family:inherit; }
+    .order-qty-input:focus { border-color:var(--blue); background:var(--bg2); }
+    .order-notes-input { width:100%; padding:4px 8px; font-size:12px; border:0.5px solid var(--border2); border-radius:5px; background:var(--bg3); color:var(--text); outline:none; font-family:inherit; }
+    .order-notes-input:focus { border-color:var(--blue); background:var(--bg2); }
+    .order-urgency { font-size:11px; font-weight:600; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+    .urgency-critical { background:#fde8e4; color:#8c1c0a; }
+    .urgency-low      { background:#fef3dc; color:#7a460a; }
+    @media(prefers-color-scheme:dark){
+      .urgency-critical{background:#3d1a16;color:#f4957d;}
+      .urgency-low{background:#3d2e10;color:#f0b45a;}
+    }
+    .no-orders { text-align:center; padding:48px 24px; color:var(--text3); font-size:14px; }
+    .no-orders-icon { font-size:36px; margin-bottom:12px; }
+
+    .bottom-bar { position:fixed; bottom:0; left:0; right:0; background:var(--bg2); border-top:0.5px solid var(--border2); padding:10px 16px; display:flex; gap:8px; justify-content:flex-end; align-items:center; z-index:100; flex-wrap:wrap; }
+    .action-btn { font-size:13px; padding:7px 14px; border-radius:var(--radius); border:0.5px solid var(--border2); background:var(--bg3); color:var(--text); cursor:pointer; transition:all .15s; font-family:inherit; white-space:nowrap; }
+    .action-btn:hover { background:var(--bg4); }
+    .action-btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:500; }
+    .action-btn.primary:hover { opacity:.88; }
+    .action-btn.blue { background:var(--blue); color:#fff; border-color:var(--blue); font-weight:500; }
+    .action-btn.blue:hover { opacity:.88; }
+
+    #toast { position:fixed; bottom:68px; left:50%; transform:translateX(-50%); background:#1a1a18; color:#fff; font-size:13px; padding:9px 20px; border-radius:var(--radius); opacity:0; transition:opacity .3s; pointer-events:none; white-space:nowrap; z-index:300; max-width:90vw; text-align:center; }
+    #toast.show { opacity:1; }
+
+    @media(max-width:500px){ .items-grid{grid-template-columns:1fr;} .reorder-grid{grid-template-columns:1fr;} .topbar-date{display:none;} }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">SMASH IT</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('inv',this)">Inventario</button>
+    <button class="nav-tab" onclick="showPage('reorder',this)">Punto de Reorden</button>
+    <button class="nav-tab" onclick="showPage('orders',this)">Órdenes</button>
+  </div>
+  <div class="topbar-date" id="date-display"></div>
+</div>
+
+<!-- INVENTARIO -->
+<div class="page active" id="page-inv">
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total</div><div class="stat-val" id="stat-total">0</div></div>
+    <div class="stat"><div class="stat-label">Con stock</div><div class="stat-val c-green" id="stat-ok">0</div></div>
+    <div class="stat"><div class="stat-label">Stock bajo</div><div class="stat-val c-red" id="stat-low">0</div></div>
+    <div class="stat"><div class="stat-label">Sin stock</div><div class="stat-val c-amber" id="stat-empty">0</div></div>
+    <div class="stat"><div class="stat-label">A pedir</div><div class="stat-val c-blue" id="stat-need">0</div></div>
+  </div>
+  <div class="controls">
+    <div class="search-wrap">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-inp" id="inv-search" placeholder="Buscar..." oninput="filterInv()">
+    </div>
+    <button class="filter-btn active" onclick="setInvFilter('all',this)">Todos</button>
+    <button class="filter-btn" onclick="setInvFilter('ok',this)">Con stock</button>
+    <button class="filter-btn" onclick="setInvFilter('low',this)">Bajo</button>
+    <button class="filter-btn" onclick="setInvFilter('empty',this)">Sin stock</button>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="ldot" style="background:var(--green)"></div> Con stock</div>
+    <div class="legend-item"><div class="ldot" style="background:var(--accent)"></div> Stock bajo</div>
+    <div class="legend-item"><div class="ldot" style="background:var(--amber)"></div> Sin stock</div>
+  </div>
+  <div id="inv-container"></div>
+  <div class="bottom-bar">
+    <button class="action-btn" onclick="resetAll()">Reiniciar</button>
+    <button class="action-btn primary" onclick="exportTxt()">↓ Lista .txt</button>
+  </div>
+</div>
+
+<!-- PUNTO DE REORDEN -->
+<div class="page" id="page-reorder">
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Total</div><div class="stat-val" id="ro-stat-total">0</div></div>
+    <div class="stat"><div class="stat-label">Configurados</div><div class="stat-val c-blue" id="ro-stat-set">0</div></div>
+    <div class="stat"><div class="stat-label">Sin configurar</div><div class="stat-val c-amber" id="ro-stat-unset">0</div></div>
+    <div class="stat"><div class="stat-label">Bajo su punto</div><div class="stat-val c-red" id="ro-stat-below">0</div></div>
+  </div>
+  <div class="controls">
+    <div class="search-wrap">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-inp" id="ro-search" placeholder="Buscar..." oninput="filterReorder()">
+    </div>
+    <button class="filter-btn active" onclick="setRoFilter('all',this)">Todos</button>
+    <button class="filter-btn" onclick="setRoFilter('below',this)">Bajo el punto</button>
+    <button class="filter-btn" onclick="setRoFilter('unset',this)">Sin configurar</button>
+  </div>
+  <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.5;">
+    Escribí la cantidad mínima de cada producto. Al llegar a ese número aparece en <strong>Órdenes</strong>. Los cambios se guardan automáticamente.
+  </p>
+  <div id="ro-container"></div>
+  <div class="bottom-bar">
+    <span style="font-size:12px;color:var(--text2);margin-right:auto;">Los cambios se guardan solos ✓</span>
+  </div>
+</div>
+
+<!-- ÓRDENES -->
+<div class="page" id="page-orders">
+  <div class="stats">
+    <div class="stat"><div class="stat-label">A pedir</div><div class="stat-val c-red" id="ord-stat-items">0</div></div>
+    <div class="stat"><div class="stat-label">Proveedores</div><div class="stat-val c-blue" id="ord-stat-suppliers">0</div></div>
+    <div class="stat"><div class="stat-label">Sin stock</div><div class="stat-val c-amber" id="ord-stat-empty">0</div></div>
+    <div class="stat"><div class="stat-label">Stock bajo</div><div class="stat-val c-red" id="ord-stat-low">0</div></div>
+  </div>
+  <div class="orders-intro">
+    Productos en o por debajo del punto de reorden. Completá las cantidades y exportá la orden.
+  </div>
+  <div id="orders-container"></div>
+  <div class="bottom-bar">
+    <button class="action-btn" onclick="renderOrders()">↺ Actualizar</button>
+    <button class="action-btn" onclick="exportTxtOrder()">↓ .txt</button>
+    <button class="action-btn primary" onclick="exportOrderPDF()">↓ PDF</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const suppliers = [
+  { name:'MAYCA', color:'#E8432D',
+    items:['Aceite de freidor','Mantequilla','Papel 10x12"','Paprika','Souffle 2oz','Piedra pómez','Desengrasante plancha','Papas fritas','Aros de cebolla','Sazonador de costillas','Consomé de pollo','Empanizador pollo','Batter','Crema dulce','Suizo','Cheddar','Crema de coco','Maicena','Pepinillo','Hongos','Ahumador','Ketchup cocina','Ketchup bar','Sweet chili','Gochugang','Búfalo','Chipotle','Tortillas nacho','Mayonesa bolsas','Removedores','Mostaza miel','Vasos de llevar / tapas','Contenedor crema y pasta'] },
+  { name:'PriceSmart', color:'#0060A9',
+    items:['Guantes','Jabón de manos','Pellegrino','Aceite de oliva','Sal','Azúcar','Splenda','Pimienta','Ajo granulado','Cebolla granulada','Canela','Vinagre','Crutones','Ranch','Cesar','Harina','Cheddar lata','Mayonesa','Barbacoa','Mostaza','Atún','Cocoa','Café polvo','Nutella','Jarabe chocolate','Huevo','Whisky','Papas gajo','Parmesano','Mozzarella','Crema batida'] },
+  { name:'Palí', color:'#F5A623',
+    items:['Pepino','Mantequilla','Chuleta / salchicha / chorizo','Aceite','Arroz','Frijoles','Azúcar bolsitas','Azúcar morena','Frijol molido','Tabasco','Pasta','Oreo','Wafer','Galleta','Brownie','Coco rallado','Jugo manzana','Jugo naranja','Jugo arándano','Jugo tomate','Vino blanco','Vino tinto','Sangría','Mayordomo','Jabón polvo','Ajax','Scott brie','Cloro','Zote','Jabón platos','Guantes trampa','Alambrina','Alcohol gel'] },
+  { name:'Pequeño Mundo', color:'#7C3AED',
+    items:['Coco López','Corona','Caramelo','Fresa','Balsámico','Papel encerado','Cubiertos','Bolsas ziploc','Papel higiénico','Toalla mano','Bolsas grandes','Bolsas pequeñas','Bolsas jardín','Alcohol','Desinfectante','Pastillas azules','Pastillas olor','Jabón vasos','Esponja vasos','Ron blanco','Ron','Tequila','Whisky','Vodka','Gin','Triple sec','Licor Melocotón','Granadina','Jarabe endulzante','Campari','Vermut rosado','Bavaria Gold'] },
+  { name:'Pedidos / Otros', color:'#2D8C57',
+    items:['Bavaria Light','Heineken','Agua','Servilletas','Papel Smash It','Desengrasante Goyca','Bolsas medianas','Bolsas pequeñas','Bolsas Uber','Pajillas','Bandeja 6x6','Bandeja 8x8','Papel impresora','Papel datáfono','Capuchino','Americano'] }
+];
+
+let inventory  = {};
+let reorderPts = {};
+let orderQtys  = {};
+let orderNotes = {};
+let invFilter  = 'all';
+let roFilter   = 'all';
+
+const today = new Date();
+document.getElementById('date-display').textContent =
+  today.toLocaleDateString('es-CR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+function mk(s, item) { return s + '::' + item; }
+
+function getStatus(key) {
+  const qty = inventory[key] || 0;
+  const rp  = reorderPts[key] || 0;
+  if (qty === 0) return 'empty';
+  if (rp > 0 && qty <= rp) return 'low';
+  if (qty < 5) return 'low';
+  return 'ok';
+}
+
+function needsOrder(key) {
+  const qty = inventory[key] || 0;
+  const rp  = reorderPts[key] || 0;
+  return qty === 0 || (rp > 0 && qty <= rp);
+}
+
+const API_URL = 'https://script.google.com/macros/s/AKfycbxep9J_ZkEsQCGKos1ZN9bONMMMdF5M5SlgSC-idd35VXzopqQPk0S2N3n7XsWXWsH8/exec';
+let saveTimer = null;
+
+function save() {
+  // Guardar local inmediatamente
+  try {
+    localStorage.setItem('smashit_inv',    JSON.stringify(inventory));
+    localStorage.setItem('smashit_ro',     JSON.stringify(reorderPts));
+    localStorage.setItem('smashit_oqtys',  JSON.stringify(orderQtys));
+    localStorage.setItem('smashit_onotes', JSON.stringify(orderNotes));
+  } catch(e) {}
+  // Sincronizar con Google Sheets con debounce de 1.5s
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(syncToCloud, 1500);
+}
+
+function syncToCloud() {
+  const data = JSON.stringify({ inventory, reorderPts, orderQtys, orderNotes });
+  fetch(API_URL, {
+    method: 'POST',
+    body: data,
+    headers: { 'Content-Type': 'text/plain' }
+  }).catch(() => {});
+}
+
+function load() {
+  // Cargar local primero para respuesta inmediata
+  try {
+    const i = localStorage.getItem('smashit_inv');    if (i) inventory  = JSON.parse(i);
+    const r = localStorage.getItem('smashit_ro');     if (r) reorderPts = JSON.parse(r);
+    const q = localStorage.getItem('smashit_oqtys');  if (q) orderQtys  = JSON.parse(q);
+    const n = localStorage.getItem('smashit_onotes'); if (n) orderNotes = JSON.parse(n);
+  } catch(e) {}
+  // Luego sincronizar desde la nube
+  fetch(API_URL)
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.inventory) {
+        inventory  = d.inventory;
+        reorderPts = d.reorderPts || {};
+        orderQtys  = d.orderQtys  || {};
+        orderNotes = d.orderNotes || {};
+        // Guardar local actualizado
+        try {
+          localStorage.setItem('smashit_inv',    JSON.stringify(inventory));
+          localStorage.setItem('smashit_ro',     JSON.stringify(reorderPts));
+          localStorage.setItem('smashit_oqtys',  JSON.stringify(orderQtys));
+          localStorage.setItem('smashit_onotes', JSON.stringify(orderNotes));
+        } catch(e) {}
+        renderInv();
+        showToast('Datos sincronizados ✓');
+      }
+    })
+    .catch(() => {});
+}
+
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'reorder') renderReorder();
+  if (id === 'orders')  renderOrders();
+}
+
+/* ── INVENTARIO ── */
+function updateInvStats() {
+  let total=0, ok=0, low=0, empty=0, need=0;
+  suppliers.forEach(s => s.items.forEach(item => {
+    const key = mk(s.name, item);
+    total++;
+    const st = getStatus(key);
+    if (st==='ok') ok++; else if (st==='low') low++; else empty++;
+    if (needsOrder(key)) need++;
+  }));
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-ok').textContent    = ok;
+  document.getElementById('stat-low').textContent   = low;
+  document.getElementById('stat-empty').textContent = empty;
+  document.getElementById('stat-need').textContent  = need;
+}
+
+function changeQty(key, delta) {
+  inventory[key] = Math.max(0, (inventory[key] || 0) + delta);
+  save();
+  const card = document.querySelector('#inv-container [data-key="' + CSS.escape(key) + '"]');
+  if (card) {
+    card.querySelector('.qty-val').textContent = inventory[key];
+    const st = getStatus(key);
+    const hidden = card.classList.contains('hidden');
+    card.className = 'item-card ' + st + (hidden ? ' hidden' : '');
+    card.querySelector('.status-dot').className = 'status-dot dot-' + st;
+  }
+  updateInvStats();
+  applyInvFilter();
+}
+
+function setInvFilter(mode, btn) {
+  invFilter = mode;
+  document.querySelectorAll('#page-inv .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyInvFilter();
+}
+function applyInvFilter() {
+  const search = (document.getElementById('inv-search').value || '').toLowerCase().trim();
+  document.querySelectorAll('#inv-container .item-card').forEach(card => {
+    const st   = getStatus(card.dataset.key);
+    const name = card.querySelector('.item-name').textContent.toLowerCase();
+    let show = true;
+    if (invFilter !== 'all' && st !== invFilter) show = false;
+    if (search && !name.includes(search)) show = false;
+    card.classList.toggle('hidden', !show);
+  });
+}
+function filterInv() { applyInvFilter(); }
+
+function toggleSection(sid) {
+  document.getElementById('sec-' + sid).classList.toggle('collapsed');
+}
+
+function renderInv() {
+  const container = document.getElementById('inv-container');
+  container.innerHTML = '';
+  suppliers.forEach(s => {
+    const sid = s.name.replace(/[^a-zA-Z0-9]/g, '_');
+    const sec = document.createElement('div');
+    sec.className = 'supplier-section';
+    sec.id = 'sec-' + sid;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'supplier-header';
+    hdr.onclick = () => toggleSection(sid);
+    hdr.innerHTML = '<div class="supplier-dot" style="background:' + s.color + '"></div>' +
+      '<div class="supplier-name">' + s.name + '</div>' +
+      '<div class="supplier-count">' + s.items.length + ' productos</div>' +
+      '<div class="supplier-toggle">&#9660;</div>';
+    sec.appendChild(hdr);
+
+    const grid = document.createElement('div');
+    grid.className = 'items-grid';
+
+    s.items.forEach((item, idx) => {
+      const key = mk(s.name, item);
+      if (!(key in inventory)) inventory[key] = 0;
+      const qty = inventory[key];
+      const st  = getStatus(key);
+      const rp  = reorderPts[key] || 0;
+
+      const card = document.createElement('div');
+      card.className   = 'item-card ' + st;
+      card.dataset.key = key;
+
+      const minus = document.createElement('button');
+      minus.className = 'qty-btn'; minus.textContent = '−';
+      minus.onclick = () => changeQty(key, -1);
+
+      const plus = document.createElement('button');
+      plus.className = 'qty-btn'; plus.textContent = '+';
+      plus.onclick = () => changeQty(key, 1);
+
+      const qv = document.createElement('div');
+      qv.className = 'qty-val'; qv.textContent = qty;
+
+      card.innerHTML = '<div class="status-dot dot-' + st + '"></div>' +
+        '<div class="item-info">' +
+          '<div class="item-name" title="' + item + '">' + item + '</div>' +
+          '<div class="item-num">#' + String(idx+1).padStart(2,'0') + (rp > 0 ? ' · reorden: ' + rp : '') + '</div>' +
+        '</div>' +
+        '<div class="qty-control"></div>';
+
+      const ctrl = card.querySelector('.qty-control');
+      ctrl.appendChild(minus); ctrl.appendChild(qv); ctrl.appendChild(plus);
+      grid.appendChild(card);
+    });
+
+    sec.appendChild(grid);
+    container.appendChild(sec);
+  });
+  updateInvStats();
+  applyInvFilter();
+}
+
+function resetAll() {
+  if (!confirm('¿Reiniciar todo el inventario a cero?')) return;
+  inventory = {};
+  save();
+  renderInv();
+  showToast('Inventario reiniciado');
+}
+
+function exportTxt() {
+  const lines = ['SMASH IT — Lista de Compras', 'Fecha: ' + today.toLocaleDateString('es-CR'), ''];
+  let has = false;
+  suppliers.forEach(s => {
+    const needed = s.items.filter(item => needsOrder(mk(s.name, item)));
+    if (!needed.length) return;
+    has = true;
+    lines.push('── ' + s.name.toUpperCase() + ' ──');
+    needed.forEach(item => {
+      const key = mk(s.name, item);
+      const qty = inventory[key] || 0;
+      const rp  = reorderPts[key] || 0;
+      lines.push('  ' + (qty === 0 ? '[SIN STOCK]' : '[BAJO: ' + qty + '/' + rp + ']') + '  ' + item);
+    });
+    lines.push('');
+  });
+  if (!has) { showToast('No hay productos que necesiten pedido'); return; }
+  dlBlob(lines.join('\n'), 'lista_compras_' + today.toISOString().slice(0,10) + '.txt', 'text/plain');
+  showToast('Lista exportada');
+}
+
+/* ── PUNTO DE REORDEN ── */
+function updateRoStats() {
+  let total=0, set=0, unset=0, below=0;
+  suppliers.forEach(s => s.items.forEach(item => {
+    const key = mk(s.name, item);
+    const rp  = reorderPts[key] || 0;
+    const qty = inventory[key] || 0;
+    total++;
+    if (rp > 0) set++; else unset++;
+    if (rp > 0 && qty <= rp) below++;
+  }));
+  document.getElementById('ro-stat-total').textContent = total;
+  document.getElementById('ro-stat-set').textContent   = set;
+  document.getElementById('ro-stat-unset').textContent = unset;
+  document.getElementById('ro-stat-below').textContent = below;
+}
+
+function setRoFilter(mode, btn) {
+  roFilter = mode;
+  document.querySelectorAll('#page-reorder .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterReorder();
+}
+function filterReorder() {
+  const search = (document.getElementById('ro-search').value || '').toLowerCase().trim();
+  document.querySelectorAll('#ro-container .reorder-card').forEach(card => {
+    const key = card.dataset.key;
+    const rp  = reorderPts[key] || 0;
+    const qty = inventory[key] || 0;
+    const name = card.querySelector('.reorder-name').textContent.toLowerCase();
+    let show = true;
+    if (roFilter === 'below' && !(rp > 0 && qty <= rp)) show = false;
+    if (roFilter === 'unset' && rp > 0) show = false;
+    if (search && !name.includes(search)) show = false;
+    card.classList.toggle('hidden', !show);
+  });
+}
+
+function renderReorder() {
+  const container = document.getElementById('ro-container');
+  container.innerHTML = '';
+  suppliers.forEach(s => {
+    const sec = document.createElement('div');
+    sec.className = 'supplier-section';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'supplier-header';
+    hdr.onclick = () => sec.classList.toggle('collapsed');
+    hdr.innerHTML = '<div class="supplier-dot" style="background:' + s.color + '"></div>' +
+      '<div class="supplier-name">' + s.name + '</div>' +
+      '<div class="supplier-count">' + s.items.length + ' productos</div>' +
+      '<div class="supplier-toggle">&#9660;</div>';
+    sec.appendChild(hdr);
+
+    const grid = document.createElement('div');
+    grid.className = 'reorder-grid';
+
+    s.items.forEach(item => {
+      const key = mk(s.name, item);
+      const rp  = reorderPts[key] || 0;
+      const qty = inventory[key] || 0;
+
+      const card = document.createElement('div');
+      card.className   = 'reorder-card';
+      card.dataset.key = key;
+
+      const badge = document.createElement('span');
+      badge.className = 'stock-badge ' + (qty === 0 ? 'badge-empty' : (rp > 0 && qty <= rp ? 'badge-low' : 'badge-ok'));
+      badge.textContent = qty === 0 ? 'Sin stock' : (rp > 0 && qty <= rp ? 'Bajo (' + qty + ')' : 'OK (' + qty + ')');
+
+      const inp = document.createElement('input');
+      inp.type        = 'number';
+      inp.className   = 'reorder-input';
+      inp.min         = '0';
+      inp.placeholder = '—';
+      inp.value       = rp > 0 ? rp : '';
+      inp.dataset.key = key;
+      inp.oninput = () => {
+        const v = parseInt(inp.value) || 0;
+        reorderPts[key] = v;
+        save();
+        if (qty === 0)              { badge.className = 'stock-badge badge-empty'; badge.textContent = 'Sin stock'; }
+        else if (v > 0 && qty <= v) { badge.className = 'stock-badge badge-low';   badge.textContent = 'Bajo (' + qty + ')'; }
+        else                        { badge.className = 'stock-badge badge-ok';    badge.textContent = 'OK (' + qty + ')'; }
+        updateRoStats();
+        updateInvStats();
+      };
+
+      card.innerHTML =
+        '<div class="reorder-info">' +
+          '<div class="reorder-name" title="' + item + '">' + item + '</div>' +
+          '<div class="reorder-sub">' + s.name + '</div>' +
+        '</div>' +
+        '<span style="font-size:11px;color:var(--text2);margin-right:4px;">Reorden:</span>';
+      card.appendChild(inp);
+      card.appendChild(badge);
+      grid.appendChild(card);
+    });
+
+    sec.appendChild(grid);
+    container.appendChild(sec);
+  });
+  updateRoStats();
+  filterReorder();
+}
+
+/* ── ÓRDENES ── */
+function renderOrders() {
+  const container = document.getElementById('orders-container');
+  container.innerHTML = '';
+  let totalItems=0, totalSuppliers=0, totalEmpty=0, totalLow=0;
+
+  suppliers.forEach(s => {
+    const needed = s.items.filter(item => needsOrder(mk(s.name, item)));
+    if (!needed.length) return;
+    totalSuppliers++;
+    totalItems += needed.length;
+
+    const block = document.createElement('div');
+    block.className = 'order-supplier-block';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'order-supplier-hdr';
+    hdr.style.background = s.color;
+    hdr.innerHTML = '<div class="order-supplier-name">' + s.name + '</div>' +
+      '<div class="order-count-badge">' + needed.length + ' productos</div>';
+    block.appendChild(hdr);
+
+    const table = document.createElement('table');
+    table.className = 'order-table';
+    table.innerHTML = '<thead><tr>' +
+      '<th>Producto</th><th>Stock</th><th>Reorden</th><th>Urgencia</th><th>Pedir</th><th>Notas</th>' +
+      '</tr></thead>';
+    const tbody = document.createElement('tbody');
+
+    needed.forEach(item => {
+      const key = mk(s.name, item);
+      const qty = inventory[key] || 0;
+      const rp  = reorderPts[key] || 0;
+      if (qty === 0) totalEmpty++; else totalLow++;
+
+      const tr = document.createElement('tr');
+
+      const tdName = document.createElement('td');
+      tdName.className = 'order-row-name'; tdName.textContent = item;
+
+      const tdQty = document.createElement('td');
+      tdQty.style.cssText = 'text-align:center;font-weight:600;color:' + (qty === 0 ? 'var(--amber)' : 'var(--accent)');
+      tdQty.textContent = qty;
+
+      const tdRp = document.createElement('td');
+      tdRp.style.cssText = 'text-align:center;color:var(--text2)';
+      tdRp.textContent = rp > 0 ? rp : '—';
+
+      const tdUrg = document.createElement('td');
+      const urgSpan = document.createElement('span');
+      urgSpan.className = 'order-urgency ' + (qty === 0 ? 'urgency-critical' : 'urgency-low');
+      urgSpan.textContent = qty === 0 ? 'Sin stock' : 'Stock bajo';
+      tdUrg.appendChild(urgSpan);
+
+      const tdPedir = document.createElement('td');
+      const qtyInp = document.createElement('input');
+      qtyInp.type = 'number'; qtyInp.className = 'order-qty-input';
+      qtyInp.min = '0'; qtyInp.placeholder = '0';
+      qtyInp.value = orderQtys[key] || '';
+      qtyInp.dataset.key = key;
+      qtyInp.oninput = () => { orderQtys[key] = qtyInp.value; save(); };
+      tdPedir.appendChild(qtyInp);
+
+      const tdNotes = document.createElement('td');
+      const notesInp = document.createElement('input');
+      notesInp.type = 'text'; notesInp.className = 'order-notes-input';
+      notesInp.placeholder = 'Notas...';
+      notesInp.value = orderNotes[key] || '';
+      notesInp.dataset.key = key;
+      notesInp.oninput = () => { orderNotes[key] = notesInp.value; save(); };
+      tdNotes.appendChild(notesInp);
+
+      tr.appendChild(tdName); tr.appendChild(tdQty); tr.appendChild(tdRp);
+      tr.appendChild(tdUrg); tr.appendChild(tdPedir); tr.appendChild(tdNotes);
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    block.appendChild(table);
+    container.appendChild(block);
+  });
+
+  if (totalItems === 0) {
+    container.innerHTML = '<div class="no-orders"><div class="no-orders-icon">✅</div>' +
+      '<div>No hay productos que necesiten pedido.</div>' +
+      '<div style="font-size:12px;color:var(--text3);margin-top:8px;">Configurá los puntos de reorden o ajustá el inventario.</div></div>';
+  }
+
+  document.getElementById('ord-stat-items').textContent     = totalItems;
+  document.getElementById('ord-stat-suppliers').textContent = totalSuppliers;
+  document.getElementById('ord-stat-empty').textContent     = totalEmpty;
+  document.getElementById('ord-stat-low').textContent       = totalLow;
+}
+
+function exportTxtOrder() {
+  const lines = ['SMASH IT — Orden de Pedido', 'Fecha: ' + today.toLocaleDateString('es-CR'), ''];
+  let has = false;
+  suppliers.forEach(s => {
+    const needed = s.items.filter(item => needsOrder(mk(s.name, item)));
+    if (!needed.length) return;
+    has = true;
+    lines.push('── ' + s.name.toUpperCase() + ' ──');
+    needed.forEach(item => {
+      const key = mk(s.name, item);
+      const qty = inventory[key] || 0;
+      const rp  = reorderPts[key] || 0;
+      const op  = orderQtys[key]  || '?';
+      const nt  = orderNotes[key] || '';
+      lines.push('  ' + (qty===0?'[SIN STOCK]':'[BAJO:'+qty+']') + '  ' + item + '  →  pedir: ' + op + (nt?' ('+nt+')':''));
+    });
+    lines.push('');
+  });
+  if (!has) { showToast('No hay productos que necesiten pedido'); return; }
+  dlBlob(lines.join('\n'), 'orden_pedido_' + today.toISOString().slice(0,10) + '.txt', 'text/plain');
+  showToast('Orden exportada');
+}
+
+/* ── PDF ── */
+function exportOrderPDF() {
+  const orderData = [];
+  suppliers.forEach(s => {
+    const needed = s.items.filter(item => needsOrder(mk(s.name, item)));
+    if (!needed.length) return;
+    orderData.push({ name:s.name, color:s.color,
+      rows: needed.map(item => {
+        const key = mk(s.name, item);
+        return { name:item, qty:inventory[key]||0, rp:reorderPts[key]||0,
+                 op:orderQtys[key]||'—', note:orderNotes[key]||'', empty:(inventory[key]||0)===0 };
+      })
+    });
+  });
+  if (!orderData.length) { showToast('No hay productos que necesiten pedido'); return; }
+
+  const dateStr  = today.toLocaleDateString('es-CR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const totalItems = orderData.reduce((a,d) => a + d.rows.length, 0);
+  let body = '';
+
+  orderData.forEach(d => {
+    body += '<div style="margin:0 0 24px;page-break-inside:avoid;">' +
+      '<div style="background:' + d.color + ';color:#fff;padding:8px 12px;border-radius:5px 5px 0 0;display:flex;justify-content:space-between;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' +
+        '<span style="font-weight:700;font-size:12px;">' + d.name.toUpperCase() + '</span>' +
+        '<span style="font-size:10px;opacity:.85;">' + d.rows.length + ' productos</span>' +
+      '</div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px;">' +
+      '<thead><tr style="background:#edecea;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' +
+        '<th style="padding:5px 8px;text-align:left;font-size:9px;color:#6b6b67;text-transform:uppercase;border-bottom:1px solid #d4d3cf;width:34%;">Producto</th>' +
+        '<th style="padding:5px 8px;text-align:center;font-size:9px;color:#6b6b67;text-transform:uppercase;border-bottom:1px solid #d4d3cf;width:9%;">Stock</th>' +
+        '<th style="padding:5px 8px;text-align:center;font-size:9px;color:#6b6b67;text-transform:uppercase;border-bottom:1px solid #d4d3cf;width:9%;">Reorden</th>' +
+        '<th style="padding:5px 8px;text-align:center;font-size:9px;color:#6b6b67;text-transform:uppercase;border-bottom:1px solid #d4d3cf;width:12%;">Urgencia</th>' +
+        '<th style="padding:5px 8px;text-align:center;font-size:9px;color:#6b6b67;text-transform:uppercase;border-bottom:1px solid #d4d3cf;width:10%;">A pedir</th>' +
+        '<th style="padding:5px 8px;text-align:left;font-size:9px;color:#6b6b67;text-transform:uppercase;border-bottom:1px solid #d4d3cf;">Notas</th>' +
+      '</tr></thead><tbody>';
+    d.rows.forEach((row, ri) => {
+      const bg = ri%2===0?'#ffffff':'#faf9f7';
+      const sc = row.empty?'#D97A0F':'#E8432D';
+      const ub = row.empty?'#fde8e4':'#fef3dc';
+      const ut = row.empty?'#8c1c0a':'#7a460a';
+      body += '<tr style="background:'+bg+';-webkit-print-color-adjust:exact;print-color-adjust:exact;">' +
+        '<td style="padding:6px 8px;font-weight:600;border-bottom:1px solid #edecea;">' + row.name + '</td>' +
+        '<td style="padding:6px 8px;text-align:center;font-weight:700;color:'+sc+';border-bottom:1px solid #edecea;">' + row.qty + '</td>' +
+        '<td style="padding:6px 8px;text-align:center;color:#6b6b67;border-bottom:1px solid #edecea;">' + (row.rp>0?row.rp:'—') + '</td>' +
+        '<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #edecea;"><span style="background:'+ub+';color:'+ut+';font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'+(row.empty?'Sin stock':'Stock bajo')+'</span></td>' +
+        '<td style="padding:6px 8px;text-align:center;font-weight:800;font-size:13px;border-bottom:1px solid #edecea;">' + row.op + '</td>' +
+        '<td style="padding:6px 8px;color:#6b6b67;font-size:10px;font-style:italic;border-bottom:1px solid #edecea;">' + row.note + '</td>' +
+      '</tr>';
+    });
+    body += '</tbody></table></div>';
+  });
+
+  const html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Orden — Smash It</title>' +
+    '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1a1a18;}@media print{@page{margin:10mm 8mm;size:A4;}}</style>' +
+    '</head><body>' +
+    '<div style="background:#E8432D;color:#fff;padding:24px 20px 18px;margin-bottom:20px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">' +
+      '<div style="font-size:24px;font-weight:900;letter-spacing:1px;margin-bottom:3px;">SMASH IT</div>' +
+      '<div style="font-size:12px;opacity:.9;margin-bottom:4px;">Orden de Pedido</div>' +
+      '<div style="font-size:10px;opacity:.75;margin-bottom:12px;">' + dateStr + '</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<span style="background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.4);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">' + orderData.length + ' proveedores</span>' +
+        '<span style="background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.4);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;">' + totalItems + ' productos</span>' +
+      '</div></div>' +
+    '<div style="padding:0 16px;">' + body + '</div>' +
+    '<div style="margin:16px 16px 0;padding-top:8px;border-top:1px solid #edecea;font-size:9px;color:#9c9b97;display:flex;justify-content:space-between;">' +
+      '<span>Smash It — Control de Inventario</span><span>Generado: ' + today.toLocaleString('es-CR') + '</span></div>' +
+    '</body></html>';
+
+  let pf = document.getElementById('__print_frame');
+  if (pf) pf.remove();
+  pf = document.createElement('div');
+  pf.id = '__print_frame';
+  pf.innerHTML = html;
+  document.body.appendChild(pf);
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { const f = document.getElementById('__print_frame'); if(f) f.remove(); }, 1500);
+  }, 150);
+  showToast('Elegí "Guardar como PDF" en el diálogo');
+}
+
+function dlBlob(text, filename, type) {
+  const blob = new Blob([text], { type: type + ';charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+load();
+renderInv();
+</script>
+</body>
+</html>
