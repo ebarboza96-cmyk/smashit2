@@ -733,15 +733,13 @@ function ConfigTab({ d, upd, jb, persistJb, loadCloud, saveCloud }) {
 function SmashCosteo() {
   const [tab,setTab] = useState("ingredientes");
   const [d,setD] = useState(INITIAL);
-  const [jb,setJb] = useState({key:"",bin:""});
+  const [jb,setJb] = useState({key:"$2a$10$MTzGkFsu45b07iGi4Zm0u.5tJDkbU6LGtMAasLZ7pttj5O34xPQvS",bin:"69c6dc30b7ec241ddcae48b2"});
   const [sync,setSync] = useState({status:"idle",msg:""});
 
-  // Load JSONBin credentials from localStorage
+  // Credentials pre-configured
   useEffect(()=>{
-    try {
-      const saved = localStorage.getItem("smashcosteo_jb");
-      if (saved) setJb(JSON.parse(saved));
-    } catch {}
+    // Auto-load on start
+    loadCloud({key:"$2a$10$MTzGkFsu45b07iGi4Zm0u.5tJDkbU6LGtMAasLZ7pttj5O34xPQvS",bin:"69c6dc30b7ec241ddcae48b2"});
   },[]);
 
   const persistJb = (newJb) => {
