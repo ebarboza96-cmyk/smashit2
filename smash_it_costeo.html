@@ -126,7 +126,7 @@ const PRE_INGREDIENTS = [
   {id:'p097',name:'Americano',unit:'unidad',cost:0,cur:'CRC'},
 ];
 
-const INITIAL = { settings: { target: 30, rate: 530 }, ingredients: PRE_INGREDIENTS, recipes: [], combos: [] };
+const INITIAL = { settings: { target: 30, rate: 530, iva: 0, servicio: 0 }, ingredients: PRE_INGREDIENTS, recipes: [], combos: [] };
 
 // ─── Style tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -160,7 +160,8 @@ function analyze(costCRC, saleCRC, target) {
   const pct = (costCRC / saleCRC) * 100;
   const margin = ((saleCRC - costCRC) / saleCRC) * 100;
   const status = pct <= target ? "good" : pct <= target * 1.2 ? "warn" : "bad";
-  return { pct, margin, status, sugg: costCRC / (target/100) };
+  const sugg = costCRC / (target/100);
+  return { pct, margin, status, sugg };
 }
 
 const fmtCRC = n => "₡" + Math.round(n).toLocaleString("es-CR");
@@ -411,7 +412,7 @@ function IngredientsTab({ d, upd, rate }) {
 }
 
 // ─── RecipesTab ───────────────────────────────────────────────────────────────
-function RecipesTab({ d, upd, rate, target }) {
+function RecipesTab({ d, upd, rate, target, iva, servicio }) {
   const blank = {name:"",portions:1,salePrice:"",saleCur:"CRC",items:[]};
   const [form,setForm] = useState(null);
   const [pick,setPick] = useState({ingId:"",qty:""});
@@ -505,7 +506,7 @@ function RecipesTab({ d, upd, rate, target }) {
       )}
 
       {d.recipes.length===0 ? <Empty icon="🍔" text="No hay recetas. ¡Creá la primera!" /> : (
-        <DataTable cols={["Receta","Porcs.","Costo/Porc.","Precio Venta","% Costo","Margen","Precio Sugerido",""]}>
+        <DataTable cols={["Receta","Porcs.","Costo/Porc.","Precio Venta","% Costo","Margen","Sugerido (base)","Sugerido c/imp.",""]}>
           {d.recipes.map((rec,i)=>{
             const {per} = recCost(rec,d.ingredients,rate);
             const saleCRC = rec.salePrice!==""?toCRC(Number(rec.salePrice),rec.saleCur,rate):0;
@@ -524,6 +525,7 @@ function RecipesTab({ d, upd, rate, target }) {
                 <td style={{padding:"13px 15px",verticalAlign:"middle"}}><CostBadge pct={a?.pct} status={a?.status}/></td>
                 <TD>{a?`${a.margin.toFixed(1)}%`:<span style={{color:C.muted}}>—</span>}</TD>
                 <TD mono muted>{per>0?fmtCRC(per/(target/100)):"—"}</TD>
+                <TD mono>{per>0?<span style={{color:C.primary,fontWeight:700}}>{fmtCRC(per/(target/100)*(1+iva/100)*(1+servicio/100))}</span>:"—"}</TD>
                 <TD right>
                   <button className="btn-g" style={{marginRight:6}} onClick={()=>open(rec)}>✏️</button>
                   <button className="btn-d" onClick={()=>del(rec.id)}>🗑️</button>
@@ -538,7 +540,7 @@ function RecipesTab({ d, upd, rate, target }) {
 }
 
 // ─── CombosTab ────────────────────────────────────────────────────────────────
-function CombosTab({ d, upd, rate, target }) {
+function CombosTab({ d, upd, rate, target, iva, servicio }) {
   const blank = {name:"",salePrice:"",saleCur:"CRC",items:[]};
   const [form,setForm] = useState(null);
   const [pick,setPick] = useState({recId:"",qty:1});
@@ -629,7 +631,7 @@ function CombosTab({ d, upd, rate, target }) {
       )}
 
       {d.combos.length===0 ? <Empty icon="🎁" text="No hay combos. ¡Creá el primero!" /> : (
-        <DataTable cols={["Combo","Costo Total","Precio Venta","% Costo","Margen","Precio Sugerido",""]}>
+        <DataTable cols={["Combo","Costo Total","Precio Venta","% Costo","Margen","Sugerido (base)","Sugerido c/imp.",""]}>
           {d.combos.map((combo,i)=>{
             const {total} = combCost(combo,d.recipes,d.ingredients,rate);
             const saleCRC = combo.salePrice!==""?toCRC(Number(combo.salePrice),combo.saleCur,rate):0;
@@ -647,6 +649,7 @@ function CombosTab({ d, upd, rate, target }) {
                 <td style={{padding:"13px 15px",verticalAlign:"middle"}}><CostBadge pct={a?.pct} status={a?.status}/></td>
                 <TD>{a?`${a.margin.toFixed(1)}%`:<span style={{color:C.muted}}>—</span>}</TD>
                 <TD mono muted>{total>0?fmtCRC(total/(target/100)):"—"}</TD>
+                <TD mono>{total>0?<span style={{color:C.primary,fontWeight:700}}>{fmtCRC(total/(target/100)*(1+iva/100)*(1+servicio/100))}</span>:"—"}</TD>
                 <TD right>
                   <button className="btn-g" style={{marginRight:6}} onClick={()=>open(combo)}>✏️</button>
                   <button className="btn-d" onClick={()=>del(combo.id)}>🗑️</button>
@@ -661,29 +664,28 @@ function CombosTab({ d, upd, rate, target }) {
 }
 
 // ─── ConfigTab ────────────────────────────────────────────────────────────────
-function ConfigTab({ d, upd, jb, persistJb, loadCloud, saveCloud }) {
+function ConfigTab({ d, upd }) {
   const [settings,setSettings] = useState({...d.settings});
-  const [localJb,setLocalJb] = useState({...jb});
   const [savedMsg,setSavedMsg] = useState("");
 
   const saveAll = () => {
     upd("settings", settings);
-    persistJb(localJb);
-    setSavedMsg("✓ Configuración guardada");
+    setSavedMsg("✓ Guardado");
     setTimeout(()=>setSavedMsg(""),2500);
   };
 
   const targetColor = settings.target<=30 ? C.success : settings.target<=38 ? C.warn : C.danger;
   const targetLabel = settings.target<=30 ? "✓ Conservador" : settings.target<=38 ? "⚠ Moderado" : "✕ Riesgoso";
+  const mult = (1 + (settings.iva||13)/100) * (1 + (settings.servicio||10)/100);
 
   return (
-    <div style={{maxWidth:580}}>
+    <div style={{maxWidth:520}}>
       <h2 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,marginBottom:24}}>Configuración</h2>
 
-      {/* Target cost */}
+      {/* Margen */}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:22,marginBottom:14}}>
-        <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>🎯 Objetivo de costo de alimentos</h3>
-        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Porcentaje máximo aceptable del costo sobre el precio de venta. Estándar en restaurantes: 25%–35%.</p>
+        <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>🎯 Margen de utilidad</h3>
+        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Porcentaje máximo del costo sobre el precio de venta. Estándar en restaurantes: 25%–35%.</p>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <input className="inp" type="number" min="1" max="100" value={settings.target} onChange={e=>setSettings({...settings,target:Number(e.target.value)})} style={{width:90}} />
           <span style={{color:C.muted}}>%</span>
@@ -691,35 +693,37 @@ function ConfigTab({ d, upd, jb, persistJb, loadCloud, saveCloud }) {
         </div>
       </div>
 
-      {/* Exchange rate */}
+      {/* Tipo de cambio */}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:22,marginBottom:14}}>
         <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>💱 Tipo de cambio</h3>
-        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Colones por 1 dólar. Actualizalo según el BCCR o tu banco.</p>
+        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Colones por 1 dólar. Actualizalo según el BCCR.</p>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <input className="inp" type="number" min="1" value={settings.rate} onChange={e=>setSettings({...settings,rate:Number(e.target.value)})} style={{width:140}} />
           <span style={{color:C.muted}}>₡ por $1</span>
         </div>
       </div>
 
-      {/* JSONBin */}
+      {/* IVA */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:22,marginBottom:14}}>
+        <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>🧾 IVA</h3>
+        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Impuesto al valor agregado. Dejalo en 0 si no querés aplicarlo.</p>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <input className="inp" type="number" min="0" max="100" value={settings.iva??0} onChange={e=>setSettings({...settings,iva:Number(e.target.value)})} style={{width:90}} />
+          <span style={{color:C.muted}}>%</span>
+        </div>
+      </div>
+
+      {/* Tarifa de servicio */}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:22,marginBottom:20}}>
-        <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>☁️ JSONBin.io — Nube</h3>
-        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Guardá y cargá tus datos desde la nube. Cuenta gratis en <a href="https://jsonbin.io" target="_blank" style={{color:C.primary,textDecoration:"none"}}>jsonbin.io</a>.</p>
-        <div style={{marginBottom:12}}><Fl label="Master Key (API Key)"><input className="inp" type="password" value={localJb.key} onChange={e=>setLocalJb({...localJb,key:e.target.value})} placeholder="$2b$10$..." /></Fl></div>
-        <div style={{marginBottom:16}}><Fl label="Bin ID"><input className="inp" value={localJb.bin} onChange={e=>setLocalJb({...localJb,bin:e.target.value})} placeholder="64a3f..." /></Fl></div>
-        <div style={{display:"flex",gap:8,marginBottom:16}}>
-          <button className="btn-p" onClick={()=>{persistJb(localJb);loadCloud(localJb);}}>🔄 Cargar desde nube</button>
-          <button className="btn-g" onClick={()=>{persistJb(localJb);saveCloud(d,localJb);}}>☁️ Guardar en nube</button>
+        <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>🍽️ Tarifa de servicio</h3>
+        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Cargo por servicio. Dejalo en 0 si no querés aplicarlo.</p>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <input className="inp" type="number" min="0" max="100" value={settings.servicio??0} onChange={e=>setSettings({...settings,servicio:Number(e.target.value)})} style={{width:90}} />
+          <span style={{color:C.muted}}>%</span>
         </div>
-        <div style={{background:C.surface2,borderRadius:8,padding:14,fontSize:12,color:C.muted,lineHeight:2}}>
-          <b style={{color:C.text}}>¿Cómo configurar JSONBin?</b>
-          <ol style={{paddingLeft:18,marginTop:4}}>
-            <li>Creá cuenta gratis en <a href="https://jsonbin.io" target="_blank" style={{color:C.primary}}>jsonbin.io</a></li>
-            <li>Andá a <b style={{color:C.text}}>API Keys</b> y copiá tu <b style={{color:C.text}}>Master Key</b></li>
-            <li>Creá un nuevo Bin con contenido <code style={{background:C.surface3,padding:"1px 5px",borderRadius:3,color:C.primary}}>{"{}"}</code></li>
-            <li>Copiá el <b style={{color:C.text}}>Bin ID</b> que aparece en la URL del bin</li>
-          </ol>
-        </div>
+        <p style={{fontSize:12,color:C.muted,marginTop:12}}>
+          💡 IVA + servicio combinados: <strong style={{color:C.primary}}>{((mult-1)*100).toFixed(1)}% sobre el precio base</strong>
+        </p>
       </div>
 
       <button className="btn-p" onClick={saveAll} style={{width:"100%",padding:"13px 0",fontSize:16}}>
@@ -779,13 +783,22 @@ function SmashCosteo() {
     }
   };
 
+  // Auto-save whenever data changes (debounced 1.5s)
+  useEffect(()=>{
+    const jbCreds = {key:"$2a$10$MTzGkFsu45b07iGi4Zm0u.5tJDkbU6LGtMAasLZ7pttj5O34xPQvS",bin:"69c6dc30b7ec241ddcae48b2"};
+    const timer = setTimeout(()=>{ saveCloud(d, jbCreds); }, 1500);
+    return ()=>clearTimeout(timer);
+  },[d]);
+
   const upd = (key,val) => {
     setD(prev=>({...prev,[key]:val}));
-    setSync({status:"idle",msg:""});
+    setSync({status:"saving",msg:"Guardando..."});
   };
 
   const rate = d.settings?.rate||530;
   const target = d.settings?.target||30;
+  const iva = d.settings?.iva??0;
+  const servicio = d.settings?.servicio??0;
 
   const syncColor = {ok:C.success,error:C.danger,loading:C.muted,saving:C.warn,idle:C.muted}[sync.status];
   const syncIcon = {ok:"✓",error:"⚠",loading:"⏳",saving:"⏳",idle:""}[sync.status];
@@ -865,9 +878,9 @@ function SmashCosteo() {
         {/* Content */}
         <main style={{padding:"28px 24px",maxWidth:1140,margin:"0 auto"}}>
           {tab==="ingredientes" && <IngredientsTab d={d} upd={upd} rate={rate} />}
-          {tab==="recetas"      && <RecipesTab     d={d} upd={upd} rate={rate} target={target} />}
-          {tab==="combos"       && <CombosTab      d={d} upd={upd} rate={rate} target={target} />}
-          {tab==="config"       && <ConfigTab      d={d} upd={upd} jb={jb} persistJb={persistJb} loadCloud={loadCloud} saveCloud={saveCloud} />}
+          {tab==="recetas"      && <RecipesTab     d={d} upd={upd} rate={rate} target={target} iva={iva} servicio={servicio} />}
+          {tab==="combos"       && <CombosTab      d={d} upd={upd} rate={rate} target={target} iva={iva} servicio={servicio} />}
+          {tab==="config"       && <ConfigTab      d={d} upd={upd} />}
         </main>
       </div>
     </>
