@@ -278,44 +278,47 @@ function needsOrder(key) {
   return qty === 0 || (rp > 0 && qty <= rp);
 }
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbxU6p5dr4XS44-YR7ErXi4FnEbpMTk0l5w-yivpz07-e4TkVVMdlNawt_IpgW2bq-cQ/exec';
+const BIN_ID  = '69c6c032c3097a1dd568bf79';
+const BIN_KEY = '$2a$10$MTzGkFsu45b07iGi4Zm0u.5tJDkbU6LGtMAasLZ7pttj5O34xPQvS';
+const BIN_URL = 'https://api.jsonbin.io/v3/b/' + BIN_ID;
 let saveTimer = null;
 
 function save() {
-  // Guardar local inmediatamente
   try {
     localStorage.setItem('smashit_inv',    JSON.stringify(inventory));
     localStorage.setItem('smashit_ro',     JSON.stringify(reorderPts));
     localStorage.setItem('smashit_oqtys',  JSON.stringify(orderQtys));
     localStorage.setItem('smashit_onotes', JSON.stringify(orderNotes));
   } catch(e) {}
-  // Sincronizar con Google Sheets con debounce de 1.5s
   clearTimeout(saveTimer);
   saveTimer = setTimeout(syncToCloud, 1500);
 }
 
 function syncToCloud() {
-  const data = JSON.stringify({ inventory, reorderPts, orderQtys, orderNotes });
-  // Usar no-cors para evitar problemas de CORS en el POST
-  fetch(API_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: data,
-    headers: { 'Content-Type': 'text/plain' }
+  const data = { inventory, reorderPts, orderQtys, orderNotes };
+  fetch(BIN_URL, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': BIN_KEY
+    },
+    body: JSON.stringify(data)
   }).catch(() => {});
 }
 
 function load() {
-  // Cargar local primero para respuesta inmediata
   try {
     const i = localStorage.getItem('smashit_inv');    if (i) inventory  = JSON.parse(i);
     const r = localStorage.getItem('smashit_ro');     if (r) reorderPts = JSON.parse(r);
     const q = localStorage.getItem('smashit_oqtys');  if (q) orderQtys  = JSON.parse(q);
     const n = localStorage.getItem('smashit_onotes'); if (n) orderNotes = JSON.parse(n);
   } catch(e) {}
-  // Sincronizar desde la nube via JSONP para evitar CORS
-  const script = document.createElement('script');
-  window.__smashitCallback = function(d) {
+  fetch(BIN_URL + '/latest', {
+    headers: { 'X-Master-Key': BIN_KEY }
+  })
+  .then(r => r.json())
+  .then(res => {
+    const d = res.record;
     if (d && d.inventory) {
       inventory  = d.inventory;
       reorderPts = d.reorderPts || {};
@@ -330,11 +333,8 @@ function load() {
       renderInv();
       showToast('Datos sincronizados ✓');
     }
-    document.head.removeChild(script);
-  };
-  script.src = API_URL + '?callback=__smashitCallback';
-  script.onerror = () => { try { document.head.removeChild(script); } catch(e) {} };
-  document.head.appendChild(script);
+  })
+  .catch(() => {});
 }
 
 function showPage(id, btn) {
