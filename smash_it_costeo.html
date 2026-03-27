@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smash It — Costeo</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: #0A0A0A; min-height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const UNITS = ["kg","g","lb","oz","litro","ml","unidad","porción","taza","docena","paquete","caja","trozo","rollo"];
+const PRE_INGREDIENTS = [
+  // ── MAYCA ──
+  {id:'p001',name:'Aceite de freidor',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p002',name:'Mantequilla',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p003',name:'Paprika',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p004',name:'Papas fritas',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p005',name:'Aros de cebolla',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p006',name:'Sazonador de costillas',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p007',name:'Consomé de pollo',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p008',name:'Empanizador pollo',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p009',name:'Batter',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p010',name:'Crema dulce',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p011',name:'Queso Suizo',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p012',name:'Cheddar',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p013',name:'Crema de coco',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p014',name:'Maicena',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p015',name:'Pepinillo',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p016',name:'Hongos',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p017',name:'Ketchup (cocina)',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p018',name:'Ketchup (bar)',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p019',name:'Sweet chili',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p020',name:'Gochugang',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p021',name:'Búfalo',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p022',name:'Chipotle',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p023',name:'Tortillas nacho',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p024',name:'Mayonesa (bolsas)',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p025',name:'Mostaza miel',unit:'litro',cost:0,cur:'CRC'},
+  // ── PriceSmart ──
+  {id:'p026',name:'Aceite de oliva',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p027',name:'Sal',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p028',name:'Azúcar',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p029',name:'Splenda',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p030',name:'Pimienta',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p031',name:'Ajo granulado',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p032',name:'Cebolla granulada',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p033',name:'Canela',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p034',name:'Vinagre',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p035',name:'Crutones',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p036',name:'Aderezo Ranch',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p037',name:'Aderezo César',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p038',name:'Harina',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p039',name:'Cheddar (lata)',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p040',name:'Mayonesa',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p041',name:'Barbacoa',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p042',name:'Mostaza',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p043',name:'Atún',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p044',name:'Cocoa',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p045',name:'Café polvo',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p046',name:'Nutella',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p047',name:'Jarabe de chocolate',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p048',name:'Huevo',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p049',name:'Papas gajo',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p050',name:'Parmesano',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p051',name:'Mozzarella',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p052',name:'Crema batida',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p053',name:'Pellegrino',unit:'unidad',cost:0,cur:'CRC'},
+  // ── Palí ──
+  {id:'p054',name:'Pepino',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p055',name:'Chuleta / salchicha / chorizo',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p056',name:'Aceite',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p057',name:'Arroz',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p058',name:'Frijoles',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p059',name:'Frijol molido',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p060',name:'Tabasco',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p061',name:'Pasta',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p062',name:'Oreo',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p063',name:'Wafer',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p064',name:'Galleta',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p065',name:'Brownie',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p066',name:'Coco rallado',unit:'kg',cost:0,cur:'CRC'},
+  {id:'p067',name:'Jugo de manzana',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p068',name:'Jugo de naranja',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p069',name:'Jugo de arándano',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p070',name:'Jugo de tomate',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p071',name:'Vino blanco',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p072',name:'Vino tinto',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p073',name:'Sangría',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p074',name:'Azúcar morena',unit:'kg',cost:0,cur:'CRC'},
+  // ── Pequeño Mundo ──
+  {id:'p075',name:'Coco López',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p076',name:'Caramelo',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p077',name:'Fresa (salsa)',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p078',name:'Balsámico',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p079',name:'Ron blanco',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p080',name:'Ron',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p081',name:'Tequila',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p082',name:'Whisky',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p083',name:'Vodka',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p084',name:'Gin',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p085',name:'Triple sec',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p086',name:'Licor de melocotón',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p087',name:'Granadina',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p088',name:'Jarabe endulzante',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p089',name:'Campari',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p090',name:'Vermut rosado',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p091',name:'Bavaria Gold',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p092',name:'Corona',unit:'unidad',cost:0,cur:'CRC'},
+  // ── Pedidos / Otros ──
+  {id:'p093',name:'Bavaria Light',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p094',name:'Heineken',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p095',name:'Agua',unit:'litro',cost:0,cur:'CRC'},
+  {id:'p096',name:'Capuchino',unit:'unidad',cost:0,cur:'CRC'},
+  {id:'p097',name:'Americano',unit:'unidad',cost:0,cur:'CRC'},
+];
+
+const INITIAL = { settings: { target: 30, rate: 530 }, ingredients: PRE_INGREDIENTS, recipes: [], combos: [] };
+
+// ─── Style tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:"#0A0A0A", surface:"#141414", surface2:"#1E1E1E", surface3:"#282828",
+  border:"#2A2A2A", primary:"#FF6B00", primaryH:"#FF8533",
+  text:"#F0F0F0", muted:"#666", faint:"#333",
+  success:"#22C55E", warn:"#F59E0B", danger:"#EF4444",
+};
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+const toCRC = (v, cur, rate) => cur === "USD" ? v * rate : v;
+
+function recCost(rec, ings, rate) {
+  const total = (rec.items||[]).reduce((s,it) => {
+    const ing = ings.find(i => i.id === it.ingId);
+    return s + (ing ? toCRC(Number(ing.cost)||0, ing.cur, rate) * (Number(it.qty)||0) : 0);
+  }, 0);
+  return { total, per: total / Math.max(Number(rec.portions)||1, 1) };
+}
+
+function combCost(combo, recs, ings, rate) {
+  const total = (combo.items||[]).reduce((s,it) => {
+    const rec = recs.find(r => r.id === it.recId);
+    return rec ? s + recCost(rec, ings, rate).per * (Number(it.qty)||1) : s;
+  }, 0);
+  return { total };
+}
+
+function analyze(costCRC, saleCRC, target) {
+  if (!saleCRC || saleCRC <= 0 || !costCRC || costCRC <= 0) return null;
+  const pct = (costCRC / saleCRC) * 100;
+  const margin = ((saleCRC - costCRC) / saleCRC) * 100;
+  const status = pct <= target ? "good" : pct <= target * 1.2 ? "warn" : "bad";
+  return { pct, margin, status, sugg: costCRC / (target/100) };
+}
+
+const fmtCRC = n => "₡" + Math.round(n).toLocaleString("es-CR");
+const fmtUSD = n => "$" + (Number(n)||0).toFixed(2);
+
+// ─── Shared UI ────────────────────────────────────────────────────────────────
+function Fl({ label, children }) {
+  return (
+    <div>
+      {label && <p style={{fontSize:11,color:C.muted,fontWeight:700,letterSpacing:.8,marginBottom:5,textTransform:"uppercase"}}>{label}</p>}
+      {children}
+    </div>
+  );
+}
+
+function SectionHeader({ title, count, noun, action, onAction, formOpen }) {
+  return (
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:22}}>
+      <div>
+        <h2 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,letterSpacing:.5}}>{title}</h2>
+        <p style={{color:C.muted,fontSize:13,marginTop:2}}>{count} {noun}{count!==1?"s":""}</p>
+      </div>
+      {!formOpen && <button className="btn-p" onClick={onAction}>{action}</button>}
+    </div>
+  );
+}
+
+function FormCard({ title, children }) {
+  return (
+    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:22,marginBottom:20}}>
+      <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:20,fontWeight:700,marginBottom:18,color:C.primary}}>{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function DataTable({ cols, children }) {
+  return (
+    <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflowX:"auto"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",minWidth:580}}>
+        <thead>
+          <tr style={{borderBottom:`1px solid ${C.border}`}}>
+            {cols.map(c=>(
+              <th key={c} style={{padding:"11px 15px",textAlign:"left",fontSize:10,color:C.muted,fontWeight:700,letterSpacing:1,textTransform:"uppercase",whiteSpace:"nowrap"}}>{c}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
+function TD({ children, muted, mono, right, wrap }) {
+  return (
+    <td style={{padding:"13px 15px",verticalAlign:"middle",color:muted?C.muted:C.text,fontFamily:mono?"'Courier New',monospace":undefined,textAlign:right?"right":"left",whiteSpace:wrap?"normal":"nowrap"}}>
+      {children}
+    </td>
+  );
+}
+
+function Empty({ icon, text }) {
+  return (
+    <div style={{textAlign:"center",padding:"64px 0",color:C.muted}}>
+      <div style={{fontSize:50,marginBottom:12}}>{icon}</div>
+      <p style={{fontSize:15}}>{text}</p>
+    </div>
+  );
+}
+
+function KPI({ label, value, color }) {
+  return (
+    <div>
+      <p style={{fontSize:10,color:C.muted,fontWeight:700,letterSpacing:.8,marginBottom:3,textTransform:"uppercase"}}>{label}</p>
+      <p style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:22,fontWeight:700,color:color||C.text,lineHeight:1}}>{value}</p>
+    </div>
+  );
+}
+
+function CostBadge({ pct, status }) {
+  if (pct==null) return <span className="bk-none">—</span>;
+  const cls = {good:"bk-good",warn:"bk-warn",bad:"bk-bad"}[status]||"bk-none";
+  return <span className={cls}>{pct.toFixed(1)}%</span>;
+}
+
+function ErrMsg({ msg }) {
+  return msg ? <p style={{color:C.danger,fontSize:13,marginBottom:12}}>⚠ {msg}</p> : null;
+}
+
+function LiveKPIs({ costCRC, rate, saleCRC, analysis, target }) {
+  if (!costCRC || costCRC <= 0) return null;
+  return (
+    <div style={{background:C.surface2,borderRadius:8,padding:16,marginBottom:18,display:"flex",gap:24,flexWrap:"wrap",alignItems:"flex-start"}}>
+      <KPI label="Costo (₡)" value={fmtCRC(costCRC)} />
+      <KPI label="Costo ($)" value={fmtUSD(costCRC/rate)} />
+      {analysis && <>
+        <KPI label="% Costo" value={`${analysis.pct.toFixed(1)}%`} color={{good:C.success,warn:C.warn,bad:C.danger}[analysis.status]} />
+        <KPI label="Margen" value={`${analysis.margin.toFixed(1)}%`} color={{good:C.success,warn:C.warn,bad:C.danger}[analysis.status]} />
+        <KPI label={`Sugerido (${target}%)`} value={fmtCRC(analysis.sugg)} />
+      </>}
+      {!analysis && saleCRC===0 && <p style={{color:C.muted,fontSize:13,alignSelf:"center"}}>Ingresá el precio de venta para ver el análisis completo</p>}
+    </div>
+  );
+}
+
+// ─── IngredientsTab ───────────────────────────────────────────────────────────
+function IngredientsTab({ d, upd, rate }) {
+  const blank = {name:"",unit:"kg",cur:"CRC",packCost:"",packUnits:"",cost:""};
+  const [form,setForm] = useState(null);
+  const [err,setErr] = useState("");
+
+  const open = (ing=null) => { setErr(""); setForm(ing?{...ing}:{...blank}); };
+  const close = () => { setForm(null); setErr(""); };
+
+  const calcUnit = (f) => {
+    const pc = Number(f.packCost), pu = Number(f.packUnits);
+    return (pc > 0 && pu > 0) ? pc/pu : Number(f.cost)||0;
+  };
+
+  const handlePack = (field, value) => {
+    const next = {...form, [field]: value};
+    const pc = Number(field==="packCost" ? value : next.packCost);
+    const pu = Number(field==="packUnits" ? value : next.packUnits);
+    if (pc > 0 && pu > 0) next.cost = (pc/pu).toFixed(4);
+    setForm(next);
+  };
+
+  const submit = () => {
+    if (!form.name.trim()) return setErr("El nombre es requerido");
+    const unitCost = calcUnit(form);
+    if (!unitCost || isNaN(unitCost)) return setErr("Ingresá el costo por paquete y unidades, o el costo unitario");
+    const item = {...form, packCost:Number(form.packCost)||0, packUnits:Number(form.packUnits)||0, cost:unitCost};
+    upd("ingredients", form.id
+      ? d.ingredients.map(i=>i.id===form.id?item:i)
+      : [...d.ingredients,{...item,id:uid()}]
+    );
+    close();
+  };
+
+  const del = (id) => {
+    const used = d.recipes.filter(r=>(r.items||[]).some(it=>it.ingId===id));
+    if (used.length>0) return alert(`Usado en recetas: ${used.map(r=>r.name).join(", ")}. Eliminalo de esas recetas primero.`);
+    if (window.confirm("¿Eliminar ingrediente?")) upd("ingredients", d.ingredients.filter(i=>i.id!==id));
+  };
+
+  const autoCalc = form && Number(form.packCost)>0 && Number(form.packUnits)>0;
+  const preview = form ? calcUnit(form) : 0;
+
+  return (
+    <div>
+      <SectionHeader title="Ingredientes" count={d.ingredients.length} noun="ingrediente" action="+ Agregar" onAction={()=>open()} formOpen={!!form} />
+
+      {form && (
+        <FormCard title={form.id?"✏️ Editar ingrediente":"🆕 Nuevo ingrediente"}>
+          <div style={{display:"grid",gridTemplateColumns:"3fr 1fr 1fr",gap:14,marginBottom:14}}>
+            <Fl label="Nombre">
+              <input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Ej: Carne de res smash" />
+            </Fl>
+            <Fl label="Unidad">
+              <select className="inp" value={form.unit} onChange={e=>setForm({...form,unit:e.target.value})}>{UNITS.map(u=><option key={u}>{u}</option>)}</select>
+            </Fl>
+            <Fl label="Moneda">
+              <select className="inp" value={form.cur} onChange={e=>setForm({...form,cur:e.target.value})}>
+                <option value="CRC">₡ Colones</option>
+                <option value="USD">$ Dólares</option>
+              </select>
+            </Fl>
+          </div>
+
+          <div style={{background:C.surface2,borderRadius:8,padding:14,marginBottom:14}}>
+            <p style={{fontSize:11,color:C.muted,fontWeight:700,letterSpacing:.8,marginBottom:12,textTransform:"uppercase"}}>
+              Precio por paquete <span style={{fontWeight:400,textTransform:"none",letterSpacing:0}}>(si comprás en bulto, llena estos dos)</span>
+            </p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+              <Fl label={`Costo por paquete (${form.cur==="USD"?"$":"₡"})`}>
+                <input className="inp" type="number" min="0" step="0.01"
+                  value={form.packCost}
+                  onChange={e=>handlePack("packCost",e.target.value)}
+                  placeholder="Ej: 12000" />
+              </Fl>
+              <Fl label={`Unidades por paquete (${form.unit})`}>
+                <input className="inp" type="number" min="0" step="0.001"
+                  value={form.packUnits}
+                  onChange={e=>handlePack("packUnits",e.target.value)}
+                  placeholder="Ej: 25" />
+              </Fl>
+              <Fl label={`Costo por ${form.unit}${autoCalc?" (auto)":""}`}>
+                <input className="inp" type="number" min="0" step="0.0001"
+                  value={autoCalc ? preview.toFixed(4) : form.cost}
+                  onChange={e=>{ if(!autoCalc) setForm({...form,cost:e.target.value}); }}
+                  readOnly={autoCalc}
+                  style={{
+                    background: autoCalc ? C.surface3 : C.surface2,
+                    color: autoCalc ? C.primary : C.text,
+                    fontWeight: autoCalc ? 700 : 400,
+                  }}
+                  placeholder="O ingresá directo" />
+              </Fl>
+            </div>
+            {autoCalc && (
+              <p style={{fontSize:12,color:C.muted,marginTop:10}}>
+                💡 {form.cur==="CRC"?"₡":"$"}{Number(form.packCost).toLocaleString("es-CR")} ÷ {form.packUnits} {form.unit} = <strong style={{color:C.primary}}>{form.cur==="CRC"?"₡":"$"}{preview.toFixed(4)} por {form.unit}</strong>
+              </p>
+            )}
+            {!autoCalc && (
+              <p style={{fontSize:12,color:C.faint,marginTop:10}}>
+                O ingresá el costo unitario directamente en el campo de la derecha
+              </p>
+            )}
+          </div>
+
+          <ErrMsg msg={err} />
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button className="btn-g" onClick={close}>Cancelar</button>
+            <button className="btn-p" onClick={submit}>{form.id?"Guardar":"Agregar"}</button>
+          </div>
+        </FormCard>
+      )}
+
+      {d.ingredients.length===0 ? <Empty icon="🥩" text="Todavía no hay ingredientes. ¡Agregá el primero!" /> : (
+        <DataTable cols={["Ingrediente","Unidad","Info de paquete","Costo / unidad ₡","Costo / unidad $",""]}>
+          {d.ingredients.map((ing,i)=>{
+            const crc = toCRC(Number(ing.cost)||0, ing.cur, rate);
+            const hasPack = ing.packCost>0 && ing.packUnits>0;
+            return (
+              <tr key={ing.id} className="tr-hover" style={{borderBottom:i<d.ingredients.length-1?`1px solid ${C.border}`:"none"}}>
+                <td style={{padding:"13px 15px",fontWeight:600,color:C.text,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ing.name}</td>
+                <TD muted>{ing.unit}</TD>
+                <td style={{padding:"13px 15px",fontSize:13,color:C.muted}}>
+                  {hasPack
+                    ? <>{ing.cur==="USD"?"$":"₡"}{Number(ing.packCost).toLocaleString("es-CR")} / {ing.packUnits} {ing.unit}</>
+                    : <span style={{color:C.faint,fontSize:12}}>\u2014</span>
+                  }
+                </td>
+                <TD mono>{crc>0 ? fmtCRC(crc) : <span style={{color:C.faint}}>sin costo</span>}</TD>
+                <TD mono muted>{crc>0 ? fmtUSD(crc/rate) : "\u2014"}</TD>
+                <TD right>
+                  <button className="btn-g" style={{marginRight:6}} onClick={()=>open(ing)}>✏️</button>
+                  <button className="btn-d" onClick={()=>del(ing.id)}>🗑️</button>
+                </TD>
+              </tr>
+            );
+          })}
+        </DataTable>
+      )}
+    </div>
+  );
+}
+
+// ─── RecipesTab ───────────────────────────────────────────────────────────────
+function RecipesTab({ d, upd, rate, target }) {
+  const blank = {name:"",portions:1,salePrice:"",saleCur:"CRC",items:[]};
+  const [form,setForm] = useState(null);
+  const [pick,setPick] = useState({ingId:"",qty:""});
+  const [err,setErr] = useState("");
+
+  const open = (rec=null) => { setErr(""); setPick({ingId:"",qty:""}); setForm(rec?{...rec,items:[...(rec.items||[])]}:{...blank}); };
+  const close = () => { setForm(null); setErr(""); };
+
+  const addLine = () => {
+    if (!pick.ingId||!pick.qty||Number(pick.qty)<=0) return setErr("Seleccioná ingrediente y cantidad válida");
+    setForm(f=>({...f,items:[...f.items,{ingId:pick.ingId,qty:Number(pick.qty)}]}));
+    setPick({ingId:"",qty:""}); setErr("");
+  };
+
+  const submit = () => {
+    if (!form.name.trim()) return setErr("Ingresá el nombre");
+    if (form.items.length===0) return setErr("Agregá al menos un ingrediente");
+    const item = {...form,portions:Number(form.portions)||1,salePrice:form.salePrice===""?"":Number(form.salePrice)};
+    upd("recipes", form.id
+      ? d.recipes.map(r=>r.id===form.id?item:r)
+      : [...d.recipes,{...item,id:uid()}]
+    );
+    close();
+  };
+
+  const del = (id) => {
+    const used = d.combos.filter(c=>(c.items||[]).some(it=>it.recId===id));
+    if (used.length>0) return alert(`Usada en combos: ${used.map(c=>c.name).join(", ")}`);
+    if (window.confirm("¿Eliminar receta?")) upd("recipes", d.recipes.filter(r=>r.id!==id));
+  };
+
+  const live = form ? recCost(form, d.ingredients, rate) : null;
+  const liveSaleCRC = form&&form.salePrice ? toCRC(Number(form.salePrice),form.saleCur,rate) : 0;
+  const liveA = live && live.per>0 ? analyze(live.per, liveSaleCRC, target) : null;
+
+  return (
+    <div>
+      <SectionHeader title="Recetas" count={d.recipes.length} noun="receta" action="+ Nueva receta" onAction={()=>open()} formOpen={!!form} />
+
+      {form && (
+        <FormCard title={form.id?"✏️ Editar receta":"🆕 Nueva receta"}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1.5fr 1fr",gap:14,marginBottom:18}}>
+            <Fl label="Nombre"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Ej: Smash Burger Simple" /></Fl>
+            <Fl label="Porciones"><input className="inp" type="number" min="1" value={form.portions} onChange={e=>setForm({...form,portions:e.target.value})} /></Fl>
+            <Fl label="Precio de venta"><input className="inp" type="number" min="0" step="0.01" value={form.salePrice} onChange={e=>setForm({...form,salePrice:e.target.value})} placeholder="0.00" /></Fl>
+            <Fl label="Moneda venta"><select className="inp" value={form.saleCur} onChange={e=>setForm({...form,saleCur:e.target.value})}><option value="CRC">₡ Colones</option><option value="USD">$ Dólares</option></select></Fl>
+          </div>
+
+          {live && <LiveKPIs costCRC={live.per} rate={rate} saleCRC={liveSaleCRC} analysis={liveA} target={target} />}
+
+          <p style={{fontSize:11,color:C.muted,fontWeight:700,letterSpacing:.8,marginBottom:10,textTransform:"uppercase"}}>Ingredientes de la receta</p>
+
+          {form.items.length>0 && (
+            <div style={{background:C.surface2,borderRadius:8,marginBottom:12,overflow:"hidden"}}>
+              {form.items.map((it,i)=>{
+                const ing = d.ingredients.find(x=>x.id===it.ingId);
+                if (!ing) return null;
+                const lineCRC = toCRC(Number(ing.cost),ing.cur,rate)*it.qty;
+                return (
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:i<form.items.length-1?`1px solid ${C.border}`:"none"}}>
+                    <span style={{flex:1,fontSize:14}}>{ing.name}</span>
+                    <span style={{color:C.muted,minWidth:90,fontSize:13}}>{it.qty} {ing.unit}</span>
+                    <span style={{fontFamily:"monospace",minWidth:110,textAlign:"right",fontSize:13}}>{fmtCRC(lineCRC)}</span>
+                    <button className="btn-d" onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))}>✕</button>
+                  </div>
+                );
+              })}
+              <div style={{padding:"8px 14px",borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"flex-end",fontSize:13}}>
+                <span style={{color:C.muted,marginRight:8}}>Total receta:</span>
+                <span style={{fontFamily:"monospace",fontWeight:700}}>{fmtCRC(live?.total||0)}</span>
+              </div>
+            </div>
+          )}
+
+          {d.ingredients.length>0 ? (
+            <div style={{display:"flex",gap:8,marginBottom:18,alignItems:"flex-end"}}>
+              <div style={{flex:2}}><Fl label="Agregar ingrediente"><select className="inp" value={pick.ingId} onChange={e=>setPick({...pick,ingId:e.target.value})}><option value="">Seleccionar...</option>{d.ingredients.map(i=><option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></Fl></div>
+              <div style={{flex:1}}><Fl label="Cantidad"><input className="inp" type="number" min="0" step="0.001" value={pick.qty} onChange={e=>setPick({...pick,qty:e.target.value})} placeholder="0.000" /></Fl></div>
+              <button className="btn-p" style={{whiteSpace:"nowrap"}} onClick={addLine}>+ Agregar</button>
+            </div>
+          ) : (
+            <p style={{color:C.warn,fontSize:13,marginBottom:16}}>⚠️ Primero agregá ingredientes en la pestaña Ingredientes</p>
+          )}
+
+          <ErrMsg msg={err} />
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button className="btn-g" onClick={close}>Cancelar</button>
+            <button className="btn-p" onClick={submit}>{form.id?"Guardar":"Crear receta"}</button>
+          </div>
+        </FormCard>
+      )}
+
+      {d.recipes.length===0 ? <Empty icon="🍔" text="No hay recetas. ¡Creá la primera!" /> : (
+        <DataTable cols={["Receta","Porcs.","Costo/Porc.","Precio Venta","% Costo","Margen","Precio Sugerido",""]}>
+          {d.recipes.map((rec,i)=>{
+            const {per} = recCost(rec,d.ingredients,rate);
+            const saleCRC = rec.salePrice!==""?toCRC(Number(rec.salePrice),rec.saleCur,rate):0;
+            const a = analyze(per,saleCRC,target);
+            return (
+              <tr key={rec.id} className="tr-hover" style={{borderBottom:i<d.recipes.length-1?`1px solid ${C.border}`:"none"}}>
+                <td style={{padding:"13px 15px",color:C.text}}>
+                  <b style={{display:"block"}}>{rec.name}</b>
+                  <span style={{fontSize:11,color:C.muted}}>{(rec.items||[]).length} ingrediente{(rec.items||[]).length!==1?"s":""}</span>
+                </td>
+                <TD muted>{rec.portions}</TD>
+                <td style={{padding:"13px 15px",fontFamily:"monospace",color:C.text,whiteSpace:"nowrap"}}>
+                  {fmtCRC(per)}<br/><span style={{fontSize:11,color:C.muted}}>{fmtUSD(per/rate)}</span>
+                </td>
+                <TD mono>{saleCRC>0?fmtCRC(saleCRC):<span style={{color:C.muted}}>—</span>}</TD>
+                <td style={{padding:"13px 15px",verticalAlign:"middle"}}><CostBadge pct={a?.pct} status={a?.status}/></td>
+                <TD>{a?`${a.margin.toFixed(1)}%`:<span style={{color:C.muted}}>—</span>}</TD>
+                <TD mono muted>{per>0?fmtCRC(per/(target/100)):"—"}</TD>
+                <TD right>
+                  <button className="btn-g" style={{marginRight:6}} onClick={()=>open(rec)}>✏️</button>
+                  <button className="btn-d" onClick={()=>del(rec.id)}>🗑️</button>
+                </TD>
+              </tr>
+            );
+          })}
+        </DataTable>
+      )}
+    </div>
+  );
+}
+
+// ─── CombosTab ────────────────────────────────────────────────────────────────
+function CombosTab({ d, upd, rate, target }) {
+  const blank = {name:"",salePrice:"",saleCur:"CRC",items:[]};
+  const [form,setForm] = useState(null);
+  const [pick,setPick] = useState({recId:"",qty:1});
+  const [err,setErr] = useState("");
+
+  const open = (combo=null) => { setErr(""); setPick({recId:"",qty:1}); setForm(combo?{...combo,items:[...(combo.items||[])]}:{...blank}); };
+  const close = () => { setForm(null); setErr(""); };
+
+  const addLine = () => {
+    if (!pick.recId) return setErr("Seleccioná una receta");
+    setForm(f=>({...f,items:[...f.items,{recId:pick.recId,qty:Number(pick.qty)||1}]}));
+    setPick({recId:"",qty:1}); setErr("");
+  };
+
+  const submit = () => {
+    if (!form.name.trim()) return setErr("Ingresá el nombre del combo");
+    if (form.items.length===0) return setErr("Agregá al menos una receta");
+    const item = {...form,salePrice:form.salePrice===""?"":Number(form.salePrice)};
+    upd("combos", form.id
+      ? d.combos.map(c=>c.id===form.id?item:c)
+      : [...d.combos,{...item,id:uid()}]
+    );
+    close();
+  };
+
+  const del = (id) => {
+    if (window.confirm("¿Eliminar combo?")) upd("combos", d.combos.filter(c=>c.id!==id));
+  };
+
+  const live = form ? combCost(form, d.recipes, d.ingredients, rate) : null;
+  const liveSaleCRC = form&&form.salePrice ? toCRC(Number(form.salePrice),form.saleCur,rate) : 0;
+  const liveA = live&&live.total>0 ? analyze(live.total,liveSaleCRC,target) : null;
+
+  return (
+    <div>
+      <SectionHeader title="Combos" count={d.combos.length} noun="combo" action="+ Nuevo combo" onAction={()=>open()} formOpen={!!form} />
+
+      {form && (
+        <FormCard title={form.id?"✏️ Editar combo":"🆕 Nuevo combo"}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr",gap:14,marginBottom:18}}>
+            <Fl label="Nombre del combo"><input className="inp" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Ej: Combo Smash Clásico" /></Fl>
+            <Fl label="Precio de venta"><input className="inp" type="number" min="0" step="0.01" value={form.salePrice} onChange={e=>setForm({...form,salePrice:e.target.value})} placeholder="0.00" /></Fl>
+            <Fl label="Moneda"><select className="inp" value={form.saleCur} onChange={e=>setForm({...form,saleCur:e.target.value})}><option value="CRC">₡ Colones</option><option value="USD">$ Dólares</option></select></Fl>
+          </div>
+
+          {live && <LiveKPIs costCRC={live.total} rate={rate} saleCRC={liveSaleCRC} analysis={liveA} target={target} />}
+
+          <p style={{fontSize:11,color:C.muted,fontWeight:700,letterSpacing:.8,marginBottom:10,textTransform:"uppercase"}}>Recetas del combo</p>
+
+          {form.items.length>0 && (
+            <div style={{background:C.surface2,borderRadius:8,marginBottom:12,overflow:"hidden"}}>
+              {form.items.map((it,i)=>{
+                const rec = d.recipes.find(r=>r.id===it.recId);
+                if (!rec) return null;
+                const {per} = recCost(rec,d.ingredients,rate);
+                return (
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:i<form.items.length-1?`1px solid ${C.border}`:"none"}}>
+                    <span style={{flex:1,fontSize:14}}>{rec.name}</span>
+                    <span style={{color:C.muted,minWidth:40,fontSize:13}}>x{it.qty}</span>
+                    <span style={{fontFamily:"monospace",minWidth:110,textAlign:"right",fontSize:13}}>{fmtCRC(per*it.qty)}</span>
+                    <button className="btn-d" onClick={()=>setForm(f=>({...f,items:f.items.filter((_,j)=>j!==i)}))}>✕</button>
+                  </div>
+                );
+              })}
+              <div style={{padding:"8px 14px",borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"flex-end",fontSize:13}}>
+                <span style={{color:C.muted,marginRight:8}}>Total combo:</span>
+                <span style={{fontFamily:"monospace",fontWeight:700}}>{fmtCRC(live?.total||0)}</span>
+              </div>
+            </div>
+          )}
+
+          {d.recipes.length>0 ? (
+            <div style={{display:"flex",gap:8,marginBottom:18,alignItems:"flex-end"}}>
+              <div style={{flex:2}}><Fl label="Agregar receta"><select className="inp" value={pick.recId} onChange={e=>setPick({...pick,recId:e.target.value})}><option value="">Seleccionar receta...</option>{d.recipes.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></Fl></div>
+              <div style={{flex:0.6}}><Fl label="Cantidad"><input className="inp" type="number" min="1" value={pick.qty} onChange={e=>setPick({...pick,qty:e.target.value})} /></Fl></div>
+              <button className="btn-p" onClick={addLine}>+ Agregar</button>
+            </div>
+          ) : (
+            <p style={{color:C.warn,fontSize:13,marginBottom:16}}>⚠️ Primero creá recetas en la pestaña Recetas</p>
+          )}
+
+          <ErrMsg msg={err} />
+          <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button className="btn-g" onClick={close}>Cancelar</button>
+            <button className="btn-p" onClick={submit}>{form.id?"Guardar":"Crear combo"}</button>
+          </div>
+        </FormCard>
+      )}
+
+      {d.combos.length===0 ? <Empty icon="🎁" text="No hay combos. ¡Creá el primero!" /> : (
+        <DataTable cols={["Combo","Costo Total","Precio Venta","% Costo","Margen","Precio Sugerido",""]}>
+          {d.combos.map((combo,i)=>{
+            const {total} = combCost(combo,d.recipes,d.ingredients,rate);
+            const saleCRC = combo.salePrice!==""?toCRC(Number(combo.salePrice),combo.saleCur,rate):0;
+            const a = analyze(total,saleCRC,target);
+            return (
+              <tr key={combo.id} className="tr-hover" style={{borderBottom:i<d.combos.length-1?`1px solid ${C.border}`:"none"}}>
+                <td style={{padding:"13px 15px",color:C.text}}>
+                  <b style={{display:"block"}}>{combo.name}</b>
+                  <span style={{fontSize:11,color:C.muted}}>{(combo.items||[]).length} receta{(combo.items||[]).length!==1?"s":""}</span>
+                </td>
+                <td style={{padding:"13px 15px",fontFamily:"monospace",color:C.text,whiteSpace:"nowrap"}}>
+                  {fmtCRC(total)}<br/><span style={{fontSize:11,color:C.muted}}>{fmtUSD(total/rate)}</span>
+                </td>
+                <TD mono>{saleCRC>0?fmtCRC(saleCRC):<span style={{color:C.muted}}>—</span>}</TD>
+                <td style={{padding:"13px 15px",verticalAlign:"middle"}}><CostBadge pct={a?.pct} status={a?.status}/></td>
+                <TD>{a?`${a.margin.toFixed(1)}%`:<span style={{color:C.muted}}>—</span>}</TD>
+                <TD mono muted>{total>0?fmtCRC(total/(target/100)):"—"}</TD>
+                <TD right>
+                  <button className="btn-g" style={{marginRight:6}} onClick={()=>open(combo)}>✏️</button>
+                  <button className="btn-d" onClick={()=>del(combo.id)}>🗑️</button>
+                </TD>
+              </tr>
+            );
+          })}
+        </DataTable>
+      )}
+    </div>
+  );
+}
+
+// ─── ConfigTab ────────────────────────────────────────────────────────────────
+function ConfigTab({ d, upd, jb, persistJb, loadCloud, saveCloud }) {
+  const [settings,setSettings] = useState({...d.settings});
+  const [localJb,setLocalJb] = useState({...jb});
+  const [savedMsg,setSavedMsg] = useState("");
+
+  const saveAll = () => {
+    upd("settings", settings);
+    persistJb(localJb);
+    setSavedMsg("✓ Configuración guardada");
+    setTimeout(()=>setSavedMsg(""),2500);
+  };
+
+  const targetColor = settings.target<=30 ? C.success : settings.target<=38 ? C.warn : C.danger;
+  const targetLabel = settings.target<=30 ? "✓ Conservador" : settings.target<=38 ? "⚠ Moderado" : "✕ Riesgoso";
+
+  return (
+    <div style={{maxWidth:580}}>
+      <h2 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:36,fontWeight:800,marginBottom:24}}>Configuración</h2>
+
+      {/* Target cost */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:22,marginBottom:14}}>
+        <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>🎯 Objetivo de costo de alimentos</h3>
+        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Porcentaje máximo aceptable del costo sobre el precio de venta. Estándar en restaurantes: 25%–35%.</p>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <input className="inp" type="number" min="1" max="100" value={settings.target} onChange={e=>setSettings({...settings,target:Number(e.target.value)})} style={{width:90}} />
+          <span style={{color:C.muted}}>%</span>
+          <span style={{padding:"4px 14px",background:`${targetColor}20`,color:targetColor,borderRadius:20,fontSize:13,fontWeight:700}}>{targetLabel}</span>
+        </div>
+      </div>
+
+      {/* Exchange rate */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:22,marginBottom:14}}>
+        <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>💱 Tipo de cambio</h3>
+        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Colones por 1 dólar. Actualizalo según el BCCR o tu banco.</p>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <input className="inp" type="number" min="1" value={settings.rate} onChange={e=>setSettings({...settings,rate:Number(e.target.value)})} style={{width:140}} />
+          <span style={{color:C.muted}}>₡ por $1</span>
+        </div>
+      </div>
+
+      {/* JSONBin */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:22,marginBottom:20}}>
+        <h3 style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:18,fontWeight:700,marginBottom:4}}>☁️ JSONBin.io — Nube</h3>
+        <p style={{color:C.muted,fontSize:13,marginBottom:16}}>Guardá y cargá tus datos desde la nube. Cuenta gratis en <a href="https://jsonbin.io" target="_blank" style={{color:C.primary,textDecoration:"none"}}>jsonbin.io</a>.</p>
+        <div style={{marginBottom:12}}><Fl label="Master Key (API Key)"><input className="inp" type="password" value={localJb.key} onChange={e=>setLocalJb({...localJb,key:e.target.value})} placeholder="$2b$10$..." /></Fl></div>
+        <div style={{marginBottom:16}}><Fl label="Bin ID"><input className="inp" value={localJb.bin} onChange={e=>setLocalJb({...localJb,bin:e.target.value})} placeholder="64a3f..." /></Fl></div>
+        <div style={{display:"flex",gap:8,marginBottom:16}}>
+          <button className="btn-p" onClick={()=>{persistJb(localJb);loadCloud(localJb);}}>🔄 Cargar desde nube</button>
+          <button className="btn-g" onClick={()=>{persistJb(localJb);saveCloud(d,localJb);}}>☁️ Guardar en nube</button>
+        </div>
+        <div style={{background:C.surface2,borderRadius:8,padding:14,fontSize:12,color:C.muted,lineHeight:2}}>
+          <b style={{color:C.text}}>¿Cómo configurar JSONBin?</b>
+          <ol style={{paddingLeft:18,marginTop:4}}>
+            <li>Creá cuenta gratis en <a href="https://jsonbin.io" target="_blank" style={{color:C.primary}}>jsonbin.io</a></li>
+            <li>Andá a <b style={{color:C.text}}>API Keys</b> y copiá tu <b style={{color:C.text}}>Master Key</b></li>
+            <li>Creá un nuevo Bin con contenido <code style={{background:C.surface3,padding:"1px 5px",borderRadius:3,color:C.primary}}>{"{}"}</code></li>
+            <li>Copiá el <b style={{color:C.text}}>Bin ID</b> que aparece en la URL del bin</li>
+          </ol>
+        </div>
+      </div>
+
+      <button className="btn-p" onClick={saveAll} style={{width:"100%",padding:"13px 0",fontSize:16}}>
+        {savedMsg || "Guardar configuración"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+function SmashCosteo() {
+  const [tab,setTab] = useState("ingredientes");
+  const [d,setD] = useState(INITIAL);
+  const [jb,setJb] = useState({key:"",bin:""});
+  const [sync,setSync] = useState({status:"idle",msg:""});
+
+  // Load JSONBin credentials from localStorage
+  useEffect(()=>{
+    try {
+      const saved = localStorage.getItem("smashcosteo_jb");
+      if (saved) setJb(JSON.parse(saved));
+    } catch {}
+  },[]);
+
+  const persistJb = (newJb) => {
+    setJb(newJb);
+    try { localStorage.setItem("smashcosteo_jb", JSON.stringify(newJb)); } catch {}
+  };
+
+  const loadCloud = async (credentials=jb) => {
+    if (!credentials.key||!credentials.bin) return setSync({status:"error",msg:"Configurá JSONBin en ⚙️ Config primero"});
+    setSync({status:"loading",msg:"Cargando..."});
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${credentials.bin}/latest`,{
+        headers:{"X-Master-Key":credentials.key}
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setD({...INITIAL,...json.record});
+      setSync({status:"ok",msg:"Datos cargados ✓"});
+    } catch(e) {
+      setSync({status:"error",msg:`Error: ${e.message}`});
+    }
+  };
+
+  const saveCloud = async (data=d, credentials=jb) => {
+    if (!credentials.key||!credentials.bin) return setSync({status:"error",msg:"Configurá JSONBin en ⚙️ Config primero"});
+    setSync({status:"saving",msg:"Guardando..."});
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${credentials.bin}`,{
+        method:"PUT",
+        headers:{"Content-Type":"application/json","X-Master-Key":credentials.key},
+        body:JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSync({status:"ok",msg:"Guardado en la nube ✓"});
+    } catch(e) {
+      setSync({status:"error",msg:`Error: ${e.message}`});
+    }
+  };
+
+  const upd = (key,val) => {
+    setD(prev=>({...prev,[key]:val}));
+    setSync({status:"idle",msg:""});
+  };
+
+  const rate = d.settings?.rate||530;
+  const target = d.settings?.target||30;
+
+  const syncColor = {ok:C.success,error:C.danger,loading:C.muted,saving:C.warn,idle:C.muted}[sync.status];
+  const syncIcon = {ok:"✓",error:"⚠",loading:"⏳",saving:"⏳",idle:""}[sync.status];
+
+  const TABS = [
+    {id:"ingredientes",label:"🥩 Ingredientes"},
+    {id:"recetas",label:"🍔 Recetas"},
+    {id:"combos",label:"🎁 Combos"},
+    {id:"config",label:"⚙️ Config"},
+  ];
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap');
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+        body,html{background:${C.bg};min-height:100vh;}
+        ::-webkit-scrollbar{width:5px;height:5px;}
+        ::-webkit-scrollbar-track{background:${C.surface};}
+        ::-webkit-scrollbar-thumb{background:${C.faint};border-radius:3px;}
+        input:focus,select:focus{outline:none;border-color:${C.primary}!important;box-shadow:0 0 0 2px ${C.primary}22;}
+        .tr-hover:hover td,.tr-hover:hover{background:${C.surface2}!important;cursor:default;}
+        .btn-p{background:${C.primary};color:#fff;border:none;padding:9px 18px;border-radius:7px;cursor:pointer;font-family:'Barlow',sans-serif;font-weight:600;font-size:14px;transition:background .15s;}
+        .btn-p:hover{background:${C.primaryH};}
+        .btn-p:disabled{opacity:.5;cursor:not-allowed;}
+        .btn-g{background:transparent;color:${C.muted};border:1px solid ${C.border};padding:8px 14px;border-radius:7px;cursor:pointer;font-family:'Barlow',sans-serif;font-size:13px;transition:all .15s;}
+        .btn-g:hover{color:${C.text};border-color:${C.muted};}
+        .btn-d{background:transparent;color:${C.danger};border:none;cursor:pointer;font-size:14px;padding:4px 8px;border-radius:5px;transition:background .15s;}
+        .btn-d:hover{background:rgba(239,68,68,.12);}
+        .inp{background:${C.surface2};border:1px solid ${C.border};color:${C.text};border-radius:7px;padding:9px 12px;font-family:'Barlow',sans-serif;font-size:14px;width:100%;transition:border-color .15s;}
+        .inp::placeholder{color:${C.muted};}
+        .bk-good{background:rgba(34,197,94,.12);color:${C.success};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-block;}
+        .bk-warn{background:rgba(245,158,11,.12);color:${C.warn};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-block;}
+        .bk-bad{background:rgba(239,68,68,.12);color:${C.danger};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-block;}
+        .bk-none{background:${C.surface3};color:${C.muted};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-block;}
+      `}</style>
+
+      <div style={{fontFamily:"'Barlow',sans-serif",background:C.bg,minHeight:"100vh",color:C.text}}>
+
+        {/* Header */}
+        <header style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",height:58,position:"sticky",top:0,zIndex:50}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontSize:26,fontWeight:800,color:C.primary,letterSpacing:2}}>SMASH IT</span>
+            <span style={{color:C.faint,fontSize:20,lineHeight:1}}>|</span>
+            <span style={{color:C.muted,fontSize:13,fontWeight:600,letterSpacing:1,textTransform:"uppercase"}}>Costeo</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            {sync.msg && (
+              <span style={{fontSize:13,color:syncColor,display:"flex",alignItems:"center",gap:5}}>
+                {syncIcon} {sync.msg}
+              </span>
+            )}
+            {sync.status==="idle" && (
+              <span style={{fontSize:12,color:C.faint,display:"flex",alignItems:"center",gap:4}}>
+                <span style={{width:7,height:7,borderRadius:"50%",background:C.warn,display:"inline-block"}}></span> Sin guardar
+              </span>
+            )}
+            <button className="btn-g" onClick={()=>loadCloud()}>🔄 Cargar</button>
+            <button className="btn-p" onClick={()=>saveCloud()} disabled={sync.status==="saving"}>☁️ Guardar</button>
+          </div>
+        </header>
+
+        {/* Tabs */}
+        <nav style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:"0 20px",display:"flex",position:"sticky",top:58,zIndex:40}}>
+          {TABS.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{
+              background:"transparent",border:"none",
+              color:tab===t.id?C.primary:C.muted,
+              borderBottom:`2px solid ${tab===t.id?C.primary:"transparent"}`,
+              padding:"13px 18px",cursor:"pointer",fontSize:14,
+              fontFamily:"'Barlow',sans-serif",fontWeight:tab===t.id?600:400,
+              marginBottom:-1,transition:"color .15s",whiteSpace:"nowrap",
+            }}>{t.label}</button>
+          ))}
+        </nav>
+
+        {/* Content */}
+        <main style={{padding:"28px 24px",maxWidth:1140,margin:"0 auto"}}>
+          {tab==="ingredientes" && <IngredientsTab d={d} upd={upd} rate={rate} />}
+          {tab==="recetas"      && <RecipesTab     d={d} upd={upd} rate={rate} target={target} />}
+          {tab==="combos"       && <CombosTab      d={d} upd={upd} rate={rate} target={target} />}
+          {tab==="config"       && <ConfigTab      d={d} upd={upd} jb={jb} persistJb={persistJb} loadCloud={loadCloud} saveCloud={saveCloud} />}
+        </main>
+      </div>
+    </>
+  );
+}
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<SmashCosteo />);
+  </script>
+</body>
+</html>
